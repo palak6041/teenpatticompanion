@@ -1,11 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3 Patti Table</title>
+    <title>3 Patti Table Pro</title>
     <style>
+        /* Modern UI/UX Variables */
         :root {
             --bg-base: #0f172a;
             --bg-surface: #1e293b;
@@ -13,13 +13,13 @@
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --accent: #3b82f6;
-            --blind: #8b5cf6; /* Purple for Blind action */
+            --blind: #8b5cf6;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
             --border: #334155;
-            --radius-md: 12px;
-            --radius-lg: 16px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -31,22 +31,25 @@
             margin: 0;
             padding: 0;
             overscroll-behavior-y: none;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
         }
 
-        .container { padding: 16px; max-width: 600px; margin: 0 auto; }
-        h2 { margin: 0 0 16px 0; font-size: 24px; text-align: center; }
-        label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 14px; }
+        /* Reusable UI Components */
+        .container { padding: 12px; max-width: 600px; margin: 0 auto; width: 100%; }
+        h2, h3 { margin: 0 0 12px 0; text-align: center; }
+        label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 13px; }
 
         input {
             width: 100%;
             background: var(--bg-base);
-            border: 2px solid var(--border);
+            border: 1px solid var(--border);
             color: var(--text-primary);
-            padding: 14px;
+            padding: 12px;
             border-radius: var(--radius-md);
             font-size: 16px !important; 
             outline: none;
-            transition: border-color 0.2s;
             touch-action: manipulation; 
         }
         input:focus { border-color: var(--accent); }
@@ -54,272 +57,502 @@
         button {
             border: none;
             border-radius: var(--radius-md);
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
-            padding: 16px 12px;
+            padding: 12px;
             cursor: pointer;
-            width: 100%;
-            min-height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             touch-action: manipulation; 
+            transition: opacity 0.1s;
         }
-        button:active { filter: brightness(0.9); transform: scale(0.98); }
+        button:active { opacity: 0.8; transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         
-        .btn-primary { background: var(--success); color: white; }
-        .btn-danger { background: var(--danger); color: white; }
+        .btn-primary { background: var(--success); color: white; width: 100%; }
+        .btn-danger { background: var(--danger); color: white; width: 100%; }
         .btn-action { background: var(--accent); color: white; }
         .btn-blind { background: var(--blind); color: white; }
-        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-primary); }
-        .btn-outline-dashed { background: transparent; border: 2px dashed var(--border); color: var(--text-secondary); margin-top: 16px; }
-        .btn-win { background: var(--warning); color: #000; margin-top: 10px; }
-
-        #setup-screen, #summary-screen { padding-bottom: 40px; }
-        #game-screen { display: none; padding-bottom: 80px; }
-        #summary-screen { display: none; }
-
-        .setup-group { margin-bottom: 20px; background: var(--bg-surface); padding: 20px; border-radius: var(--radius-lg); }
-        #names-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
-
-        .sticky-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(8px);
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
-            margin: 0 -16px 20px -16px;
-        }
-
-        .pot-display { text-align: center; margin-bottom: 12px; }
-        .pot-label { color: var(--text-secondary); font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        .pot-value { font-size: 42px; font-weight: 800; color: var(--warning); line-height: 1.1; }
-
-        .header-actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
-        .btn-reset-game { padding: 12px; font-size: 14px; min-height: 44px; }
-        .btn-boot { padding: 12px; min-height: 44px; }
-
-        .player-list { display: flex; flex-direction: column; gap: 16px; }
-
-        .player-card {
-            background: var(--bg-surface);
-            border-radius: var(--radius-lg);
-            padding: 16px;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        .player-card.folded {
-            opacity: 0.4;
-            background: var(--bg-base);
-            border-color: var(--border);
-            border-style: dashed;
-        }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); }
         
-        .player-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .player-name { font-size: 18px; font-weight: 700; }
-        .player-name .folded-badge { font-size: 12px; background: var(--border); padding: 4px 8px; border-radius: 4px; margin-left: 8px; }
-        .player-balance { font-size: 20px; font-weight: 700; color: var(--success); }
-        .player-balance.negative { color: var(--danger); }
+        /* Layout Sections */
+        #setup-screen, #summary-screen { padding: 16px; overflow-y: auto; height: 100%; }
+        #game-screen { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .setup-group { margin-bottom: 16px; background: var(--bg-surface); padding: 16px; border-radius: var(--radius-lg); }
+        
+        /* Seating Configurator */
+        .seating-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .seating-row input[type="text"] { flex: 1; }
+        .btn-icon { width: 40px; min-width: 40px; padding: 12px 0; background: var(--bg-surface-elevated); color: white; }
 
-        .player-actions { display: flex; flex-direction: column; gap: 8px; }
-        .bet-controls { display: flex; gap: 8px; }
-        .bet-controls input { width: 30%; text-align: center; font-weight: bold; background: var(--bg-base); padding: 0 8px; }
-        .bet-controls button { width: 35%; padding: 12px 4px; font-size: 14px; min-height: 48px; }
+        /* Game Header: Pot & Undo/Redo */
+        .game-header {
+            background: var(--bg-surface);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .pot-display { display: flex; flex-direction: column; }
+        .pot-label { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: bold; }
+        .pot-value { font-size: 28px; font-weight: 900; color: var(--warning); line-height: 1; }
+        .time-controls { display: flex; gap: 8px; }
+        .btn-time { width: 44px; height: 44px; padding: 0; font-size: 20px; background: var(--bg-surface-elevated); color: white; }
 
-        .settlement-card { background: var(--bg-surface); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
-        .settlement-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 16px; }
+        /* Part 1: Split Screen - Table Overview Grid */
+        .table-overview {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            align-content: start;
+        }
+        .mini-card {
+            background: var(--bg-surface);
+            border: 2px solid transparent;
+            padding: 10px;
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .mini-card.active { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+        .mini-card.folded { opacity: 0.4; border-style: dashed; border-color: var(--border); }
+        .mini-card.sitting-out { opacity: 0.3; background: #000; }
+        .mc-name { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mc-bal { font-size: 16px; font-weight: bold; color: var(--success); }
+        .mc-bal.negative { color: var(--danger); }
+        .status-badge { font-size: 10px; background: var(--border); padding: 2px 6px; border-radius: 4px; align-self: flex-start; }
+
+        /* Part 2: Split Screen - Focus Mode (Active Turn) */
+        .focus-panel {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            padding: 16px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+            flex-shrink: 0;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.2);
+        }
+        .focus-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .focus-name { font-size: 22px; font-weight: 800; }
+        .focus-balance { font-size: 22px; font-weight: 700; color: var(--success); }
+        
+        .nav-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+        .nav-controls button { flex: 1; background: var(--bg-surface-elevated); padding: 8px; font-size: 14px; }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .bet-input-wrapper { grid-column: span 2; display: flex; gap: 10px; }
+        .bet-input-wrapper input { text-align: center; font-weight: bold; font-size: 18px !important; }
+        .bet-input-wrapper button { flex: 1; }
+
+        /* Settlement Screen */
+        .settlement-card { background: var(--bg-surface); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px; }
+        .settlement-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
         .settlement-item:last-child { border-bottom: none; }
-        .pay-amount { font-weight: bold; color: var(--warning); }
         .debtor { color: var(--danger); font-weight: bold; }
         .creditor { color: var(--success); font-weight: bold; }
-
+        .utility-row { display: flex; gap: 8px; margin-top: 12px; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div id="setup-screen" class="container">
+    <h2>Table Configuration</h2>
     
-    <!-- SETUP SCREEN -->
-    <div id="setup-screen">
-        <h2>Table Setup</h2>
+    <div class="setup-group">
+        <label>Starting Coins per Player</label>
+        <input type="number" id="start-coins" value="1000" step="100" inputmode="numeric">
         
-        <div class="setup-group">
-            <label>Players Count</label>
-            <input type="number" id="player-count" min="2" max="15" value="6" inputmode="numeric" pattern="[0-9]*">
-            <div id="names-container"></div>
-        </div>
-
-        <div class="setup-group">
-            <label>Starting Coins</label>
-            <input type="number" id="start-coins" value="1000" step="100" inputmode="numeric" pattern="[0-9]*">
-            
-            <label style="margin-top: 16px;">Boot (Ante)</label>
-            <input type="number" id="boot-amount" value="10" step="5" inputmode="numeric" pattern="[0-9]*">
-        </div>
-
-        <button class="btn-primary" onclick="startGame()">Start Game</button>
+        <label style="margin-top: 12px;">Boot (Ante) Amount</label>
+        <input type="number" id="boot-amount" value="10" step="5" inputmode="numeric">
+        
+        <label style="margin-top: 12px;">Max Pot Limit (0 = No Limit)</label>
+        <input type="number" id="max-pot" value="6000" step="100" inputmode="numeric">
     </div>
 
-    <!-- GAME SCREEN -->
-    <div id="game-screen">
-        <div class="sticky-header">
-            <div class="pot-display">
-                <div class="pot-label">Total Pot</div>
-                <div class="pot-value" id="pot-display">0</div>
+    <div class="setup-group">
+        <label>Player Seating (Top to Bottom = Turn Order)</label>
+        <div id="seating-container">
             </div>
-            
-            <div class="header-actions">
-                <button class="btn-primary btn-boot" onclick="collectBoot()">Deal / Collect Boot</button>
-                <button class="btn-danger btn-reset-game" onclick="endGame()">End Game</button>
-            </div>
+        <div class="utility-row">
+            <button class="btn-outline" onclick="addSetupPlayer()">+ Add Seat</button>
+            <button class="btn-outline" onclick="removeSetupPlayer()">- Remove Seat</button>
+        </div>
+    </div>
+
+    <button class="btn-primary" onclick="startGame()">Start Game</button>
+</div>
+
+<div id="game-screen">
+    <div class="game-header">
+        <div class="pot-display">
+            <span class="pot-label">Total Pot</span>
+            <span class="pot-value" id="pot-display">0</span>
+        </div>
+        <div class="time-controls">
+            <button class="btn-time" id="btn-undo" onclick="undo()">↺</button>
+            <button class="btn-time" id="btn-redo" onclick="redo()">↻</button>
+        </div>
+    </div>
+
+    <div class="table-overview" id="overview-grid">
         </div>
 
-        <div class="player-list" id="player-grid"></div>
-        
-        <button class="btn-outline-dashed" onclick="addNewPlayer()">+ Add Player Mid-Game</button>
-    </div>
+    <div class="focus-panel" id="focus-panel">
+        </div>
+</div>
 
-    <!-- SUMMARY SCREEN -->
-    <div id="summary-screen">
-        <h2>Game Settlement</h2>
-        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">Who owes who to settle up:</p>
-        
-        <div class="settlement-card" id="settlement-list"></div>
-
-        <button class="btn-danger" onclick="confirmReset()">Close & Reset Table</button>
-    </div>
-
+<div id="summary-screen" class="container">
+    <h2>Settlement Summary</h2>
+    <div class="settlement-card" id="settlement-list"></div>
+    <button class="btn-danger" onclick="confirmReset()">Close & Clear Table Data</button>
 </div>
 
 <script>
-    let players = [];
-    let pot = 0;
-    let bootAmount = 10;
-    let startingCoins = 1000; // Track this globally for new mid-game players
+    // --- STATE MANAGEMENT ---
+    let state = {
+        players: [],
+        pot: 0,
+        bootAmount: 10,
+        startingCoins: 1000,
+        maxPotLimit: 6000,
+        currentIdx: 0
+    };
+    
+    let setupPlayerCount = 6;
+    let historyStack = [];
+    let redoStack = [];
 
-    const setupScreen = document.getElementById('setup-screen');
-    const gameScreen = document.getElementById('game-screen');
-    const summaryScreen = document.getElementById('summary-screen');
-    const playerGrid = document.getElementById('player-grid');
-    const potDisplay = document.getElementById('pot-display');
-    const playerCountInput = document.getElementById('player-count');
-    const namesContainer = document.getElementById('names-container');
-    const settlementList = document.getElementById('settlement-list');
+    // --- DOM ELEMENTS ---
+    const screens = {
+        setup: document.getElementById('setup-screen'),
+        game: document.getElementById('game-screen'),
+        summary: document.getElementById('summary-screen')
+    };
 
-    function generateNameInputs() {
-        const count = parseInt(playerCountInput.value);
-        namesContainer.innerHTML = '';
-        if (count < 2 || count > 15 || isNaN(count)) return;
+    // --- SETUP LOGIC ---
+    window.onload = () => {
+        renderSetupSeating();
+        loadFromStorage();
+    };
 
-        for (let i = 1; i <= count; i++) {
-            namesContainer.innerHTML += `
-                <input type="text" id="name-input-${i}" placeholder="P${i} Name" value="Player ${i}">
+    function renderSetupSeating() {
+        const container = document.getElementById('seating-container');
+        container.innerHTML = '';
+        for(let i=0; i<setupPlayerCount; i++) {
+            container.innerHTML += `
+                <div class="seating-row">
+                    <input type="text" id="seat-name-${i}" placeholder="Seat ${i+1}" value="Player ${i+1}">
+                    <button class="btn-icon" onclick="moveSeatUp(${i})">↑</button>
+                    <button class="btn-icon" onclick="moveSeatDown(${i})">↓</button>
+                </div>
             `;
         }
     }
 
-    playerCountInput.addEventListener('input', generateNameInputs);
+    function addSetupPlayer() { setupPlayerCount++; renderSetupSeating(); }
+    function removeSetupPlayer() { if(setupPlayerCount > 2) { setupPlayerCount--; renderSetupSeating(); } }
 
-    window.onload = function() {
-        generateNameInputs();
-        const savedData = localStorage.getItem('3patti_mobile');
-        if (savedData) {
-            const data = JSON.parse(savedData);
-            players = data.players;
-            pot = data.pot;
-            bootAmount = data.bootAmount;
-            
-            // Fallback for older saves without startingCoins saved
-            startingCoins = data.startingCoins || (players.length > 0 ? players[0].startingBalance : 1000) || 1000;
-            
-            setupScreen.style.display = 'none';
-            gameScreen.style.display = 'block';
-            renderUI();
+    function moveSeatUp(index) {
+        if(index === 0) return;
+        swapSeatValues(index, index - 1);
+    }
+    
+    function moveSeatDown(index) {
+        if(index === setupPlayerCount - 1) return;
+        swapSeatValues(index, index + 1);
+    }
+
+    function swapSeatValues(idx1, idx2) {
+        const val1 = document.getElementById(`seat-name-${idx1}`).value;
+        const val2 = document.getElementById(`seat-name-${idx2}`).value;
+        document.getElementById(`seat-name-${idx1}`).value = val2;
+        document.getElementById(`seat-name-${idx2}`).value = val1;
+    }
+
+    // --- STORAGE & MIGRATION ---
+    function loadFromStorage() {
+        const saved = localStorage.getItem('3patti_pro');
+        if (saved) {
+            const data = JSON.parse(saved);
+            state.players = data.players || [];
+            state.pot = data.pot || 0;
+            state.bootAmount = data.bootAmount || 10;
+            state.startingCoins = data.startingCoins || 1000;
+            state.maxPotLimit = data.maxPotLimit || (state.players.length * state.startingCoins);
+            state.currentIdx = data.currentIdx || 0;
+
+            // Ensure missing properties exist for older data
+            state.players.forEach(p => {
+                p.isSittingOut = p.isSittingOut || false;
+            });
+
+            switchScreen('game');
+            renderGameUI();
         }
-    };
+    }
 
-    function saveData() {
-        localStorage.setItem('3patti_mobile', JSON.stringify({ players, pot, bootAmount, startingCoins }));
+    function saveToStorage() {
+        localStorage.setItem('3patti_pro', JSON.stringify(state));
+    }
+
+    // --- TIME TRAVEL (UNDO/REDO) ---
+    function captureSnapshot() {
+        historyStack.push(JSON.stringify(state));
+        redoStack = []; // Clear redo timeline on new action
+        updateTimeButtons();
+    }
+
+    function undo() {
+        if (historyStack.length === 0) return;
+        redoStack.push(JSON.stringify(state));
+        state = JSON.parse(historyStack.pop());
+        saveToStorage();
+        renderGameUI();
+    }
+
+    function redo() {
+        if (redoStack.length === 0) return;
+        historyStack.push(JSON.stringify(state));
+        state = JSON.parse(redoStack.pop());
+        saveToStorage();
+        renderGameUI();
+    }
+
+    function updateTimeButtons() {
+        document.getElementById('btn-undo').disabled = historyStack.length === 0;
+        document.getElementById('btn-redo').disabled = redoStack.length === 0;
+    }
+
+    // --- GAME ENGINE ---
+    function switchScreen(target) {
+        Object.values(screens).forEach(s => s.style.display = 'none');
+        screens[target].style.display = target === 'game' ? 'flex' : 'block';
     }
 
     function startGame() {
-        const count = parseInt(playerCountInput.value);
-        startingCoins = parseInt(document.getElementById('start-coins').value);
-        bootAmount = parseInt(document.getElementById('boot-amount').value);
-
-        if (count < 2 || isNaN(count)) return alert("Need at least 2 players");
-
-        players = [];
-        for (let i = 1; i <= count; i++) {
-            const nameInput = document.getElementById(`name-input-${i}`);
-            const playerName = nameInput && nameInput.value.trim() !== '' ? nameInput.value.trim() : `Player ${i}`;
+        state.startingCoins = parseInt(document.getElementById('start-coins').value);
+        state.bootAmount = parseInt(document.getElementById('boot-amount').value);
+        state.maxPotLimit = parseInt(document.getElementById('max-pot').value) || Infinity;
+        
+        state.players = [];
+        for(let i=0; i<setupPlayerCount; i++) {
+            const nameInput = document.getElementById(`seat-name-${i}`);
+            const pName = nameInput && nameInput.value.trim() !== '' ? nameInput.value.trim() : `Player ${i+1}`;
             
-            players.push({ 
-                id: i, 
-                name: playerName, 
-                balance: startingCoins, 
-                startingBalance: startingCoins, 
-                isFolded: false 
+            state.players.push({
+                id: i+1,
+                name: pName,
+                balance: state.startingCoins,
+                startingBalance: state.startingCoins,
+                isFolded: false,
+                isSittingOut: false
             });
         }
-
-        pot = 0;
-        saveData();
-        setupScreen.style.display = 'none';
-        gameScreen.style.display = 'block';
-        window.scrollTo(0, 0);
-        renderUI();
+        
+        state.pot = 0;
+        state.currentIdx = 0;
+        historyStack = [];
+        redoStack = [];
+        
+        saveToStorage();
+        switchScreen('game');
+        renderGameUI();
     }
 
-    function addNewPlayer() {
-        const name = prompt("Enter new player's name:");
-        if (!name || name.trim() === '') return;
+    function toggleSitOut(idx) {
+        captureSnapshot();
+        state.players[idx].isSittingOut = !state.players[idx].isSittingOut;
+        if(state.players[idx].isSittingOut) state.players[idx].isFolded = true;
+        saveToStorage();
+        renderGameUI();
+    }
 
-        // Find the next available ID
-        const newId = players.length > 0 ? Math.max(...players.map(p => p.id)) + 1 : 1;
+    function collectBoot() {
+        captureSnapshot();
+        let activeCount = 0;
         
-        players.push({
-            id: newId,
-            name: name.trim(),
-            balance: startingCoins,
-            startingBalance: startingCoins,
-            isFolded: true // They join as folded until the next hand begins
+        state.players.forEach(p => {
+            if (!p.isSittingOut) {
+                p.isFolded = false; // Reset folded status for new hand
+                p.balance -= state.bootAmount;
+                activeCount++;
+            }
         });
-
-        saveData();
-        renderUI();
         
-        // Scroll to bottom so you can see the new player
-        setTimeout(() => {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }, 100);
+        state.pot += (activeCount * state.bootAmount);
+        
+        // Move turn to first active player
+        state.currentIdx = -1;
+        advanceTurn(); 
+        
+        saveToStorage();
+        renderGameUI();
     }
 
-    function endGame() {
-        if (pot > 0) {
-            alert(`There are still ${pot} coins in the pot! Please award the pot to the winner before ending the game.`);
-            return;
+    function executeBet(playerId, multiplier = 1) {
+        const input = document.getElementById(`bet-input-${playerId}`);
+        const baseAmount = parseInt(input.value);
+        if (isNaN(baseAmount) || baseAmount <= 0) return alert("Invalid amount");
+
+        const finalAmount = baseAmount * multiplier;
+
+        if (state.maxPotLimit > 0 && (state.pot + finalAmount) > state.maxPotLimit) {
+            return alert(`Bet rejected. Max pot limit is ${state.maxPotLimit.toLocaleString()}. Must show cards!`);
         }
 
-        if (confirm("Generate final settlements and close the table?")) {
+        captureSnapshot();
+        const p = state.players.find(p => p.id === playerId);
+        p.balance -= finalAmount;
+        state.pot += finalAmount;
+        
+        advanceTurn();
+        saveToStorage();
+        renderGameUI();
+    }
+
+    function foldPlayer(playerId) {
+        captureSnapshot();
+        const p = state.players.find(p => p.id === playerId);
+        p.isFolded = true;
+        advanceTurn();
+        saveToStorage();
+        renderGameUI();
+    }
+
+    function awardPot(playerId) {
+        if (state.pot === 0) return alert("Pot is empty.");
+        const p = state.players.find(p => p.id === playerId);
+        if (!confirm(`Award ${state.pot.toLocaleString()} to ${p.name}?`)) return;
+
+        captureSnapshot();
+        p.balance += state.pot;
+        state.pot = 0;
+        state.players.forEach(pl => { if(!pl.isSittingOut) pl.isFolded = false; });
+        saveToStorage();
+        renderGameUI();
+    }
+
+    // --- NAVIGATION LOGIC ---
+    function advanceTurn() {
+        let attempts = 0;
+        do {
+            state.currentIdx = (state.currentIdx + 1) % state.players.length;
+            attempts++;
+            // Failsafe: if everyone is folded or out, stop infinite loop
+            if (attempts > state.players.length) break; 
+        } while (state.players[state.currentIdx].isFolded || state.players[state.currentIdx].isSittingOut);
+    }
+
+    function navPlayer(direction) {
+        // Manual navigation lets you inspect anyone, regardless of folded state
+        state.currentIdx = (state.currentIdx + direction + state.players.length) % state.players.length;
+        renderGameUI();
+    }
+
+    // --- RENDERING ---
+    function renderGameUI() {
+        document.getElementById('pot-display').innerText = state.pot.toLocaleString();
+        updateTimeButtons();
+
+        const grid = document.getElementById('overview-grid');
+        const focus = document.getElementById('focus-panel');
+        
+        // Render Top Grid
+        grid.innerHTML = '';
+        state.players.forEach((p, index) => {
+            let status = '';
+            let classes = ['mini-card'];
+            if (index === state.currentIdx) classes.push('active');
+            if (p.isSittingOut) { classes.push('sitting-out'); status = 'Sitting Out'; }
+            else if (p.isFolded) { classes.push('folded'); status = 'Packed'; }
+
+            const balClass = p.balance < 0 ? 'negative' : '';
+            const badgeHTML = status ? `<div class="status-badge">${status}</div>` : '';
+
+            grid.innerHTML += `
+                <div class="${classes.join(' ')}" onclick="state.currentIdx = ${index}; renderGameUI();">
+                    <div class="mc-name">${p.name}</div>
+                    <div class="mc-bal ${balClass}">${p.balance.toLocaleString()}</div>
+                    ${badgeHTML}
+                </div>
+            `;
+        });
+
+        // Render Focus Panel
+        const cp = state.players[state.currentIdx];
+        if (!cp) return;
+
+        const isLocked = cp.isFolded || cp.isSittingOut;
+        const balClass = cp.balance < 0 ? 'negative' : '';
+        const sitOutText = cp.isSittingOut ? 'Join Next Hand' : 'Sit Out Hand';
+        const limitWarning = (state.pot >= state.maxPotLimit) ? `<div style="color:var(--danger); font-size:12px; font-weight:bold; text-align:center; margin-bottom:8px;">POT LIMIT REACHED</div>` : '';
+
+        focus.innerHTML = `
+            <div class="focus-header">
+                <div class="focus-name">${cp.name}</div>
+                <div class="focus-balance ${balClass}">${cp.balance.toLocaleString()} 🪙</div>
+            </div>
+
+            <div class="nav-controls">
+                <button onclick="navPlayer(-1)">◀ Prev Player</button>
+                <button onclick="navPlayer(1)">Next Player ▶</button>
+            </div>
+            
+            ${limitWarning}
+
+            ${!isLocked ? `
+                <div class="action-grid">
+                    <div class="bet-input-wrapper">
+                        <input type="number" id="bet-input-${cp.id}" value="${state.bootAmount}" step="${state.bootAmount}" inputmode="numeric">
+                    </div>
+                    <button class="btn-action" onclick="executeBet(${cp.id}, 1)">Bet</button>
+                    <button class="btn-blind" onclick="executeBet(${cp.id}, 2)">Bet x2</button>
+                    
+                    <button class="btn-outline" style="grid-column: span 2" onclick="foldPlayer(${cp.id})">Pack (Fold)</button>
+                </div>
+            ` : `<div style="text-align:center; padding: 20px; color: var(--text-secondary);">Player is currently ${cp.isSittingOut ? 'Sitting Out' : 'Packed'}</div>`}
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top: 16px;">
+                <button class="btn-primary" onclick="collectBoot()">Deal / Boot</button>
+                ${state.pot > 0 ? `<button class="btn-primary" style="background:var(--warning); color:#000;" onclick="awardPot(${cp.id})">🏆 Take Pot</button>` : `<button class="btn-outline" onclick="toggleSitOut(${state.currentIdx})">${sitOutText}</button>`}
+            </div>
+            
+            <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                <button class="btn-danger" style="background:transparent; border: 1px dashed var(--danger); color: var(--danger)" onclick="endGame()">End Game & Settle</button>
+            </div>
+        `;
+    }
+
+    // --- END GAME & SETTLEMENT ---
+    function endGame() {
+        if (state.pot > 0) return alert(`There are ${state.pot} coins in the pot. Award them first!`);
+        if (confirm("End the game and calculate settlements?")) {
             calculateSettlements();
-            gameScreen.style.display = 'none';
-            summaryScreen.style.display = 'block';
-            window.scrollTo(0, 0);
+            switchScreen('summary');
         }
     }
 
     function calculateSettlements() {
-        let debtors = [];
-        let creditors = [];
-
-        players.forEach(p => {
-            const startBal = p.startingBalance || 1000;
-            const net = p.balance - startBal;
-            
+        let debtors = [], creditors = [];
+        state.players.forEach(p => {
+            const net = p.balance - p.startingBalance;
             if (net < 0) debtors.push({ name: p.name, amount: Math.abs(net) });
             else if (net > 0) creditors.push({ name: p.name, amount: net });
         });
@@ -327,142 +560,30 @@
         debtors.sort((a, b) => b.amount - a.amount);
         creditors.sort((a, b) => b.amount - a.amount);
 
-        let html = '';
-        let i = 0;
-        let j = 0;
-
+        let html = '', i = 0, j = 0;
         while (i < debtors.length && j < creditors.length) {
-            let debtor = debtors[i];
-            let creditor = creditors[j];
-            
-            let settleAmount = Math.min(debtor.amount, creditor.amount);
+            let d = debtors[i], c = creditors[j];
+            let amt = Math.min(d.amount, c.amount);
             
             html += `
                 <div class="settlement-item">
-                    <span><span class="debtor">${debtor.name}</span> pays <span class="creditor">${creditor.name}</span></span>
-                    <span class="pay-amount">${settleAmount} 🪙</span>
+                    <span><span class="debtor">${d.name}</span> pays <span class="creditor">${c.name}</span></span>
+                    <span style="color:var(--warning); font-weight:bold;">${amt} 🪙</span>
                 </div>
             `;
-
-            debtor.amount -= settleAmount;
-            creditor.amount -= settleAmount;
-
-            if (debtor.amount === 0) i++;
-            if (creditor.amount === 0) j++;
+            d.amount -= amt; c.amount -= amt;
+            if (d.amount === 0) i++;
+            if (c.amount === 0) j++;
         }
-
-        if (html === '') {
-            html = '<div style="text-align:center; padding: 20px;">Everyone broke even!</div>';
-        }
-
-        settlementList.innerHTML = html;
+        
+        document.getElementById('settlement-list').innerHTML = html || '<div style="text-align:center;">Everyone broke even!</div>';
     }
 
     function confirmReset() {
-        localStorage.removeItem('3patti_mobile');
-        players = [];
-        pot = 0;
-        summaryScreen.style.display = 'none';
-        setupScreen.style.display = 'block';
-        generateNameInputs();
-        window.scrollTo(0, 0);
-    }
-
-    function collectBoot() {
-        players.forEach(p => p.isFolded = false);
-        let activePlayersCount = 0;
-        players.forEach(p => {
-            p.balance -= bootAmount;
-            activePlayersCount++;
-        });
-        pot += (activePlayersCount * bootAmount);
-        saveData();
-        renderUI();
-    }
-
-    function placeBet(playerId) {
-        const player = players.find(p => p.id === playerId);
-        const input = document.getElementById(`bet-input-${playerId}`);
-        const amount = parseInt(input.value);
-
-        if (isNaN(amount) || amount <= 0) return alert("Enter a valid bet");
-
-        player.balance -= amount;
-        pot += amount;
-        saveData();
-        renderUI();
-    }
-
-    function placeBlind(playerId) {
-        const player = players.find(p => p.id === playerId);
-        const input = document.getElementById(`bet-input-${playerId}`);
-        const amount = parseInt(input.value) * 2; // Blind doubles the current input value
-
-        if (isNaN(amount) || amount <= 0) return alert("Enter a valid bet");
-
-        player.balance -= amount;
-        pot += amount;
-        saveData();
-        renderUI();
-    }
-
-    function foldPlayer(playerId) {
-        const player = players.find(p => p.id === playerId);
-        player.isFolded = true;
-        saveData();
-        renderUI();
-    }
-
-    function awardWinner(playerId) {
-        if (pot === 0) return alert("The pot is empty!");
-        const player = players.find(p => p.id === playerId);
-        if (!confirm(`Give ${pot} to ${player.name}?`)) return;
-
-        player.balance += pot;
-        pot = 0;
-        players.forEach(p => p.isFolded = false);
-        saveData();
-        renderUI();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function renderUI() {
-        potDisplay.innerText = pot.toLocaleString();
-        playerGrid.innerHTML = '';
-
-        players.forEach(p => {
-            const isBankrupt = p.balance < 0 ? 'negative' : '';
-            const foldedClass = p.isFolded ? 'folded' : '';
-            const badge = p.isFolded ? `<span class="folded-badge">Packed</span>` : '';
-            
-            const cardHTML = `
-                <div class="player-card ${foldedClass}">
-                    <div class="player-info">
-                        <div class="player-name">${p.name} ${badge}</div>
-                        <div class="player-balance ${isBankrupt}">${p.balance.toLocaleString()}</div>
-                    </div>
-                    
-                    ${!p.isFolded ? `
-                        <div class="player-actions">
-                            <div class="bet-controls">
-                                <input type="number" id="bet-input-${p.id}" value="${bootAmount}" step="${bootAmount}" inputmode="numeric" pattern="[0-9]*">
-                                <button class="btn-action" onclick="placeBet(${p.id})">Bet</button>
-                                <button class="btn-blind" onclick="placeBlind(${p.id})">Blind x2</button>
-                            </div>
-                            <button class="btn-outline" onclick="foldPlayer(${p.id})">Pack (Fold)</button>
-                        </div>
-                    ` : ''}
-                    
-                    ${pot > 0 ? `
-                        <button class="btn-win" onclick="awardWinner(${p.id})">🏆 Take Pot</button>
-                    ` : ''}
-                </div>
-            `;
-            playerGrid.innerHTML += cardHTML;
-        });
+        localStorage.removeItem('3patti_pro');
+        location.reload(); // Refresh browser to start completely clean
     }
 </script>
 
 </body>
 </html>
-
