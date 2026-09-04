@@ -13,6 +13,7 @@
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --accent: #3b82f6;
+            --blind: #8b5cf6; /* Purple for Blind action */
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
@@ -36,7 +37,6 @@
         h2 { margin: 0 0 16px 0; font-size: 24px; text-align: center; }
         label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 14px; }
 
-        /* Mobile-optimized inputs: 16px font-size prevents iOS auto-zoom */
         input {
             width: 100%;
             background: var(--bg-base);
@@ -47,7 +47,7 @@
             font-size: 16px !important; 
             outline: none;
             transition: border-color 0.2s;
-            touch-action: manipulation; /* Prevents double-tap zoom */
+            touch-action: manipulation; 
         }
         input:focus { border-color: var(--accent); }
         
@@ -64,17 +64,18 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            touch-action: manipulation; /* Prevents double-tap zoom */
+            touch-action: manipulation; 
         }
         button:active { filter: brightness(0.9); transform: scale(0.98); }
         
         .btn-primary { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-action { background: var(--accent); color: white; }
+        .btn-blind { background: var(--blind); color: white; }
         .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-primary); }
+        .btn-outline-dashed { background: transparent; border: 2px dashed var(--border); color: var(--text-secondary); margin-top: 16px; }
         .btn-win { background: var(--warning); color: #000; margin-top: 10px; }
 
-        /* Screens */
         #setup-screen, #summary-screen { padding-bottom: 40px; }
         #game-screen { display: none; padding-bottom: 80px; }
         #summary-screen { display: none; }
@@ -82,7 +83,6 @@
         .setup-group { margin-bottom: 20px; background: var(--bg-surface); padding: 20px; border-radius: var(--radius-lg); }
         #names-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
 
-        /* Sticky Header */
         .sticky-header {
             position: sticky;
             top: 0;
@@ -102,7 +102,6 @@
         .btn-reset-game { padding: 12px; font-size: 14px; min-height: 44px; }
         .btn-boot { padding: 12px; min-height: 44px; }
 
-        /* Player Cards */
         .player-list { display: flex; flex-direction: column; gap: 16px; }
 
         .player-card {
@@ -125,26 +124,13 @@
         .player-balance { font-size: 20px; font-weight: 700; color: var(--success); }
         .player-balance.negative { color: var(--danger); }
 
-        .player-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .bet-group { display: flex; gap: 8px; grid-column: span 2; }
-        .bet-group input { width: 40%; text-align: center; font-weight: bold; background: var(--bg-base); }
-        .bet-group button { width: 60%; }
+        .player-actions { display: flex; flex-direction: column; gap: 8px; }
+        .bet-controls { display: flex; gap: 8px; }
+        .bet-controls input { width: 30%; text-align: center; font-weight: bold; background: var(--bg-base); padding: 0 8px; }
+        .bet-controls button { width: 35%; padding: 12px 4px; font-size: 14px; min-height: 48px; }
 
-        /* Summary List */
-        .settlement-card {
-            background: var(--bg-surface);
-            border-radius: var(--radius-lg);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .settlement-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 16px;
-        }
+        .settlement-card { background: var(--bg-surface); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
+        .settlement-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 16px; }
         .settlement-item:last-child { border-bottom: none; }
         .pay-amount { font-weight: bold; color: var(--warning); }
         .debtor { color: var(--danger); font-weight: bold; }
@@ -156,6 +142,7 @@
 
 <div class="container">
     
+    <!-- SETUP SCREEN -->
     <div id="setup-screen">
         <h2>Table Setup</h2>
         
@@ -176,6 +163,7 @@
         <button class="btn-primary" onclick="startGame()">Start Game</button>
     </div>
 
+    <!-- GAME SCREEN -->
     <div id="game-screen">
         <div class="sticky-header">
             <div class="pot-display">
@@ -190,14 +178,16 @@
         </div>
 
         <div class="player-list" id="player-grid"></div>
+        
+        <button class="btn-outline-dashed" onclick="addNewPlayer()">+ Add Player Mid-Game</button>
     </div>
 
+    <!-- SUMMARY SCREEN -->
     <div id="summary-screen">
         <h2>Game Settlement</h2>
         <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">Who owes who to settle up:</p>
         
-        <div class="settlement-card" id="settlement-list">
-            </div>
+        <div class="settlement-card" id="settlement-list"></div>
 
         <button class="btn-danger" onclick="confirmReset()">Close & Reset Table</button>
     </div>
@@ -208,6 +198,7 @@
     let players = [];
     let pot = 0;
     let bootAmount = 10;
+    let startingCoins = 1000; // Track this globally for new mid-game players
 
     const setupScreen = document.getElementById('setup-screen');
     const gameScreen = document.getElementById('game-screen');
@@ -241,6 +232,9 @@
             pot = data.pot;
             bootAmount = data.bootAmount;
             
+            // Fallback for older saves without startingCoins saved
+            startingCoins = data.startingCoins || (players.length > 0 ? players[0].startingBalance : 1000) || 1000;
+            
             setupScreen.style.display = 'none';
             gameScreen.style.display = 'block';
             renderUI();
@@ -248,12 +242,12 @@
     };
 
     function saveData() {
-        localStorage.setItem('3patti_mobile', JSON.stringify({ players, pot, bootAmount }));
+        localStorage.setItem('3patti_mobile', JSON.stringify({ players, pot, bootAmount, startingCoins }));
     }
 
     function startGame() {
         const count = parseInt(playerCountInput.value);
-        const startingCoins = parseInt(document.getElementById('start-coins').value);
+        startingCoins = parseInt(document.getElementById('start-coins').value);
         bootAmount = parseInt(document.getElementById('boot-amount').value);
 
         if (count < 2 || isNaN(count)) return alert("Need at least 2 players");
@@ -267,7 +261,7 @@
                 id: i, 
                 name: playerName, 
                 balance: startingCoins, 
-                startingBalance: startingCoins, // Store for final calculation
+                startingBalance: startingCoins, 
                 isFolded: false 
             });
         }
@@ -278,6 +272,30 @@
         gameScreen.style.display = 'block';
         window.scrollTo(0, 0);
         renderUI();
+    }
+
+    function addNewPlayer() {
+        const name = prompt("Enter new player's name:");
+        if (!name || name.trim() === '') return;
+
+        // Find the next available ID
+        const newId = players.length > 0 ? Math.max(...players.map(p => p.id)) + 1 : 1;
+        
+        players.push({
+            id: newId,
+            name: name.trim(),
+            balance: startingCoins,
+            startingBalance: startingCoins,
+            isFolded: true // They join as folded until the next hand begins
+        });
+
+        saveData();
+        renderUI();
+        
+        // Scroll to bottom so you can see the new player
+        setTimeout(() => {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }, 100);
     }
 
     function endGame() {
@@ -298,16 +316,14 @@
         let debtors = [];
         let creditors = [];
 
-        // Identify winners and losers
         players.forEach(p => {
-            const startBal = p.startingBalance || 1000; // fallback if loaded from older version
+            const startBal = p.startingBalance || 1000;
             const net = p.balance - startBal;
             
             if (net < 0) debtors.push({ name: p.name, amount: Math.abs(net) });
             else if (net > 0) creditors.push({ name: p.name, amount: net });
         });
 
-        // Sort descending to optimize transfers (largest debts pay largest wins first)
         debtors.sort((a, b) => b.amount - a.amount);
         creditors.sort((a, b) => b.amount - a.amount);
 
@@ -315,7 +331,6 @@
         let i = 0;
         let j = 0;
 
-        // Greedy matching algorithm
         while (i < debtors.length && j < creditors.length) {
             let debtor = debtors[i];
             let creditor = creditors[j];
@@ -378,6 +393,19 @@
         renderUI();
     }
 
+    function placeBlind(playerId) {
+        const player = players.find(p => p.id === playerId);
+        const input = document.getElementById(`bet-input-${playerId}`);
+        const amount = parseInt(input.value) * 2; // Blind doubles the current input value
+
+        if (isNaN(amount) || amount <= 0) return alert("Enter a valid bet");
+
+        player.balance -= amount;
+        pot += amount;
+        saveData();
+        renderUI();
+    }
+
     function foldPlayer(playerId) {
         const player = players.find(p => p.id === playerId);
         player.isFolded = true;
@@ -416,9 +444,10 @@
                     
                     ${!p.isFolded ? `
                         <div class="player-actions">
-                            <div class="bet-group">
+                            <div class="bet-controls">
                                 <input type="number" id="bet-input-${p.id}" value="${bootAmount}" step="${bootAmount}" inputmode="numeric" pattern="[0-9]*">
                                 <button class="btn-action" onclick="placeBet(${p.id})">Bet</button>
+                                <button class="btn-blind" onclick="placeBlind(${p.id})">Blind x2</button>
                             </div>
                             <button class="btn-outline" onclick="foldPlayer(${p.id})">Pack (Fold)</button>
                         </div>
@@ -436,3 +465,4 @@
 
 </body>
 </html>
+
