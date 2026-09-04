@@ -39,7 +39,7 @@
         /* Reusable UI Components */
         .container { padding: 12px; max-width: 600px; margin: 0 auto; width: 100%; }
         h2, h3 { margin: 0 0 12px 0; text-align: center; }
-        label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 13px; }
+        label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 12px; }
 
         input {
             width: 100%;
@@ -78,15 +78,21 @@
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); }
         
         /* Layout Sections */
-        #setup-screen, #summary-screen { padding: 16px; overflow-y: auto; height: 100%; }
+        #setup-screen, #summary-screen { padding: 12px; overflow-y: auto; height: 100%; }
         #game-screen { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        .setup-group { margin-bottom: 16px; background: var(--bg-surface); padding: 16px; border-radius: var(--radius-lg); }
+        /* --- COMPACT SETUP SCREEN UI --- */
+        .setup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .setup-card { background: var(--bg-surface); padding: 12px; border-radius: var(--radius-md); margin-bottom: 12px; }
         
-        /* Seating Configurator */
-        .seating-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-        .seating-row input[type="text"] { flex: 1; }
-        .btn-icon { width: 40px; min-width: 40px; padding: 12px 0; background: var(--bg-surface-elevated); color: white; }
+        .compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .compact-grid .full-width { grid-column: span 2; }
+        .setup-input { padding: 8px 12px; height: 44px; font-size: 15px !important; }
+        
+        .seating-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+        .seating-row:last-child { margin-bottom: 0; }
+        .seating-row input { flex: 1; padding: 8px 12px; height: 40px; font-size: 15px !important; }
+        .btn-mini { width: 36px; min-width: 36px; height: 40px; padding: 0; background: var(--bg-surface-elevated); color: white; border-radius: 6px; }
 
         /* Game Header: Pot & Undo/Redo */
         .game-header {
@@ -128,12 +134,10 @@
         .mini-card.folded { opacity: 0.4; border-style: dashed; border-color: var(--border); }
         .mini-card.sitting-out { opacity: 0.3; background: #000; }
         
-        /* Updated Grid Row 1: Name + Status Badge */
         .mc-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
         .mc-name { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .status-badge { font-size: 10px; background: var(--border); padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
         
-        /* Grid Row 2: Balance */
         .mc-bal { font-size: 16px; font-weight: bold; color: var(--success); }
         .mc-bal.negative { color: var(--danger); }
 
@@ -170,36 +174,44 @@
         .settlement-item:last-child { border-bottom: none; }
         .debtor { color: var(--danger); font-weight: bold; }
         .creditor { color: var(--success); font-weight: bold; }
-        .utility-row { display: flex; gap: 8px; margin-top: 12px; justify-content: space-between; }
     </style>
 </head>
 <body>
 
 <div id="setup-screen" class="container">
-    <h2>Table Configuration</h2>
-    
-    <div class="setup-group">
-        <label>Starting Coins per Player</label>
-        <input type="number" id="start-coins" value="1000" step="100" inputmode="numeric">
-        
-        <label style="margin-top: 12px;">Boot (Ante) Amount</label>
-        <input type="number" id="boot-amount" value="10" step="5" inputmode="numeric">
-        
-        <label style="margin-top: 12px;">Max Pot Limit (0 = No Limit)</label>
-        <input type="number" id="max-pot" value="6000" step="100" inputmode="numeric">
+    <div class="setup-header">
+        <h2 style="margin: 0; font-size: 20px;">Table Config</h2>
+        <button class="btn-primary" style="width: auto; padding: 8px 16px; min-height: 40px;" onclick="startGame()">Start Game ▶</button>
     </div>
-
-    <div class="setup-group">
-        <label>Player Seating (Top to Bottom = Turn Order)</label>
-        <div id="seating-container">
+    
+    <div class="setup-card">
+        <div class="compact-grid">
+            <div>
+                <label>Start Coins</label>
+                <input type="number" id="start-coins" value="1000" step="100" inputmode="numeric" class="setup-input">
             </div>
-        <div class="utility-row">
-            <button class="btn-outline" onclick="addSetupPlayer()">+ Add Seat</button>
-            <button class="btn-outline" onclick="removeSetupPlayer()">- Remove Seat</button>
+            <div>
+                <label>Boot (Ante)</label>
+                <input type="number" id="boot-amount" value="10" step="5" inputmode="numeric" class="setup-input">
+            </div>
+            <div class="full-width">
+                <label>Max Pot Limit (0 = No Limit)</label>
+                <input type="number" id="max-pot" value="6000" step="100" inputmode="numeric" class="setup-input">
+            </div>
         </div>
     </div>
 
-    <button class="btn-primary" onclick="startGame()">Start Game</button>
+    <div class="setup-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <label style="margin: 0; color: var(--text-primary); font-weight: bold;">Player Seating (Turn Order)</label>
+            <div style="display: flex; gap: 6px;">
+                <button class="btn-mini" onclick="removeSetupPlayer()">-</button>
+                <button class="btn-mini" onclick="addSetupPlayer()">+</button>
+            </div>
+        </div>
+        <div id="seating-container">
+            </div>
+    </div>
 </div>
 
 <div id="game-screen">
@@ -262,8 +274,8 @@
             container.innerHTML += `
                 <div class="seating-row">
                     <input type="text" id="seat-name-${i}" placeholder="Seat ${i+1}" value="Player ${i+1}">
-                    <button class="btn-icon" onclick="moveSeatUp(${i})">↑</button>
-                    <button class="btn-icon" onclick="moveSeatDown(${i})">↓</button>
+                    <button class="btn-mini" onclick="moveSeatUp(${i})">↑</button>
+                    <button class="btn-mini" onclick="moveSeatDown(${i})">↓</button>
                 </div>
             `;
         }
