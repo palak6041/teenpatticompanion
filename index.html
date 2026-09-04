@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,17 +29,14 @@
             color: var(--text-primary);
             margin: 0;
             padding: 0;
-            overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile */
+            overscroll-behavior-y: none;
         }
 
-        /* --- UI Components --- */
         .container { padding: 16px; max-width: 600px; margin: 0 auto; }
-        
         h2 { margin: 0 0 16px 0; font-size: 24px; text-align: center; }
-
         label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 14px; }
 
-        /* Mobile-optimized inputs */
+        /* Mobile-optimized inputs: 16px font-size prevents iOS auto-zoom */
         input {
             width: 100%;
             background: var(--bg-base);
@@ -46,13 +44,13 @@
             color: var(--text-primary);
             padding: 14px;
             border-radius: var(--radius-md);
-            font-size: 18px;
+            font-size: 16px !important; 
             outline: none;
             transition: border-color 0.2s;
+            touch-action: manipulation; /* Prevents double-tap zoom */
         }
         input:focus { border-color: var(--accent); }
         
-        /* Chunky, easy-to-tap buttons */
         button {
             border: none;
             border-radius: var(--radius-md);
@@ -61,11 +59,12 @@
             padding: 16px 12px;
             cursor: pointer;
             width: 100%;
-            min-height: 52px; /* Apple minimum touch target guideline */
+            min-height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            touch-action: manipulation; /* Prevents double-tap zoom */
         }
         button:active { filter: brightness(0.9); transform: scale(0.98); }
         
@@ -75,15 +74,15 @@
         .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-primary); }
         .btn-win { background: var(--warning); color: #000; margin-top: 10px; }
 
-        /* --- Setup Screen --- */
-        #setup-screen { padding-bottom: 40px; }
+        /* Screens */
+        #setup-screen, #summary-screen { padding-bottom: 40px; }
+        #game-screen { display: none; padding-bottom: 80px; }
+        #summary-screen { display: none; }
+
         .setup-group { margin-bottom: 20px; background: var(--bg-surface); padding: 20px; border-radius: var(--radius-lg); }
         #names-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
 
-        /* --- Game Screen --- */
-        #game-screen { display: none; padding-bottom: 80px; }
-
-        /* Sticky Header for Pot - Always visible */
+        /* Sticky Header */
         .sticky-header {
             position: sticky;
             top: 0;
@@ -95,11 +94,8 @@
             margin: 0 -16px 20px -16px;
         }
 
-        .pot-display {
-            text-align: center;
-            margin-bottom: 12px;
-        }
-        .pot-label { color: var(--text-secondary); font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+        .pot-display { text-align: center; margin-bottom: 12px; }
+        .pot-label { color: var(--text-secondary); font-size: 12px; font-weight: bold; text-transform: uppercase; }
         .pot-value { font-size: 42px; font-weight: 800; color: var(--warning); line-height: 1.1; }
 
         .header-actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
@@ -123,26 +119,36 @@
             border-style: dashed;
         }
         
-        .player-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
+        .player-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .player-name { font-size: 18px; font-weight: 700; }
         .player-name .folded-badge { font-size: 12px; background: var(--border); padding: 4px 8px; border-radius: 4px; margin-left: 8px; }
         .player-balance { font-size: 20px; font-weight: 700; color: var(--success); }
         .player-balance.negative { color: var(--danger); }
 
-        .player-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr; /* Inputs and buttons side-by-side */
-            gap: 12px;
-        }
-        
+        .player-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .bet-group { display: flex; gap: 8px; grid-column: span 2; }
         .bet-group input { width: 40%; text-align: center; font-weight: bold; background: var(--bg-base); }
         .bet-group button { width: 60%; }
+
+        /* Summary List */
+        .settlement-card {
+            background: var(--bg-surface);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .settlement-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 16px;
+        }
+        .settlement-item:last-child { border-bottom: none; }
+        .pay-amount { font-weight: bold; color: var(--warning); }
+        .debtor { color: var(--danger); font-weight: bold; }
+        .creditor { color: var(--success); font-weight: bold; }
 
     </style>
 </head>
@@ -156,7 +162,6 @@
         <div class="setup-group">
             <label>Players Count</label>
             <input type="number" id="player-count" min="2" max="15" value="6" inputmode="numeric" pattern="[0-9]*">
-            
             <div id="names-container"></div>
         </div>
 
@@ -172,7 +177,6 @@
     </div>
 
     <div id="game-screen">
-        
         <div class="sticky-header">
             <div class="pot-display">
                 <div class="pot-label">Total Pot</div>
@@ -181,31 +185,39 @@
             
             <div class="header-actions">
                 <button class="btn-primary btn-boot" onclick="collectBoot()">Deal / Collect Boot</button>
-                <button class="btn-danger btn-reset-game" onclick="endGame()">End</button>
+                <button class="btn-danger btn-reset-game" onclick="endGame()">End Game</button>
             </div>
         </div>
 
-        <div class="player-list" id="player-grid">
+        <div class="player-list" id="player-grid"></div>
+    </div>
+
+    <div id="summary-screen">
+        <h2>Game Settlement</h2>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">Who owes who to settle up:</p>
+        
+        <div class="settlement-card" id="settlement-list">
             </div>
+
+        <button class="btn-danger" onclick="confirmReset()">Close & Reset Table</button>
     </div>
 
 </div>
 
 <script>
-    // App State
     let players = [];
     let pot = 0;
     let bootAmount = 10;
 
-    // DOM Elements
     const setupScreen = document.getElementById('setup-screen');
     const gameScreen = document.getElementById('game-screen');
+    const summaryScreen = document.getElementById('summary-screen');
     const playerGrid = document.getElementById('player-grid');
     const potDisplay = document.getElementById('pot-display');
     const playerCountInput = document.getElementById('player-count');
     const namesContainer = document.getElementById('names-container');
+    const settlementList = document.getElementById('settlement-list');
 
-    // Generate Name Inputs based on player count
     function generateNameInputs() {
         const count = parseInt(playerCountInput.value);
         namesContainer.innerHTML = '';
@@ -220,7 +232,6 @@
 
     playerCountInput.addEventListener('input', generateNameInputs);
 
-    // Init & Local Storage
     window.onload = function() {
         generateNameInputs();
         const savedData = localStorage.getItem('3patti_mobile');
@@ -256,6 +267,7 @@
                 id: i, 
                 name: playerName, 
                 balance: startingCoins, 
+                startingBalance: startingCoins, // Store for final calculation
                 isFolded: false 
             });
         }
@@ -264,20 +276,81 @@
         saveData();
         setupScreen.style.display = 'none';
         gameScreen.style.display = 'block';
-        window.scrollTo(0, 0); // Reset scroll position
+        window.scrollTo(0, 0);
         renderUI();
     }
 
     function endGame() {
-        if (confirm("End the game? All balances will be permanently deleted.")) {
-            localStorage.removeItem('3patti_mobile');
-            players = [];
-            pot = 0;
+        if (pot > 0) {
+            alert(`There are still ${pot} coins in the pot! Please award the pot to the winner before ending the game.`);
+            return;
+        }
+
+        if (confirm("Generate final settlements and close the table?")) {
+            calculateSettlements();
             gameScreen.style.display = 'none';
-            setupScreen.style.display = 'block';
-            generateNameInputs();
+            summaryScreen.style.display = 'block';
             window.scrollTo(0, 0);
         }
+    }
+
+    function calculateSettlements() {
+        let debtors = [];
+        let creditors = [];
+
+        // Identify winners and losers
+        players.forEach(p => {
+            const startBal = p.startingBalance || 1000; // fallback if loaded from older version
+            const net = p.balance - startBal;
+            
+            if (net < 0) debtors.push({ name: p.name, amount: Math.abs(net) });
+            else if (net > 0) creditors.push({ name: p.name, amount: net });
+        });
+
+        // Sort descending to optimize transfers (largest debts pay largest wins first)
+        debtors.sort((a, b) => b.amount - a.amount);
+        creditors.sort((a, b) => b.amount - a.amount);
+
+        let html = '';
+        let i = 0;
+        let j = 0;
+
+        // Greedy matching algorithm
+        while (i < debtors.length && j < creditors.length) {
+            let debtor = debtors[i];
+            let creditor = creditors[j];
+            
+            let settleAmount = Math.min(debtor.amount, creditor.amount);
+            
+            html += `
+                <div class="settlement-item">
+                    <span><span class="debtor">${debtor.name}</span> pays <span class="creditor">${creditor.name}</span></span>
+                    <span class="pay-amount">${settleAmount} 🪙</span>
+                </div>
+            `;
+
+            debtor.amount -= settleAmount;
+            creditor.amount -= settleAmount;
+
+            if (debtor.amount === 0) i++;
+            if (creditor.amount === 0) j++;
+        }
+
+        if (html === '') {
+            html = '<div style="text-align:center; padding: 20px;">Everyone broke even!</div>';
+        }
+
+        settlementList.innerHTML = html;
+    }
+
+    function confirmReset() {
+        localStorage.removeItem('3patti_mobile');
+        players = [];
+        pot = 0;
+        summaryScreen.style.display = 'none';
+        setupScreen.style.display = 'block';
+        generateNameInputs();
+        window.scrollTo(0, 0);
     }
 
     function collectBoot() {
@@ -322,11 +395,10 @@
         players.forEach(p => p.isFolded = false);
         saveData();
         renderUI();
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // scroll to top for next hand
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function renderUI() {
-        // Format pot nicely
         potDisplay.innerText = pot.toLocaleString();
         playerGrid.innerHTML = '';
 
@@ -335,7 +407,6 @@
             const foldedClass = p.isFolded ? 'folded' : '';
             const badge = p.isFolded ? `<span class="folded-badge">Packed</span>` : '';
             
-            // Note: inputmode="numeric" makes the number pad pop up on iOS/Android
             const cardHTML = `
                 <div class="player-card ${foldedClass}">
                     <div class="player-info">
