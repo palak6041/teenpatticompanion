@@ -94,7 +94,7 @@
         .seating-row input { flex: 1; padding: 8px 12px; height: 40px; font-size: 15px !important; }
         .btn-mini { width: 36px; min-width: 36px; height: 40px; padding: 0; background: var(--bg-surface-elevated); color: white; border-radius: 6px; }
 
-        /* Game Header: Pot & Undo/Redo */
+        /* Game Header: Pot & Controls */
         .game-header {
             background: var(--bg-surface);
             padding: 12px 16px;
@@ -107,8 +107,9 @@
         .pot-display { display: flex; flex-direction: column; }
         .pot-label { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: bold; }
         .pot-value { font-size: 28px; font-weight: 900; color: var(--warning); line-height: 1; }
-        .time-controls { display: flex; gap: 8px; }
+        .header-controls { display: flex; gap: 8px; }
         .btn-time { width: 44px; height: 44px; padding: 0; font-size: 20px; background: var(--bg-surface-elevated); color: white; }
+        .btn-end { background: var(--danger); width: auto; padding: 0 12px; font-size: 14px; color: white; }
 
         /* Part 1: Split Screen - Table Overview Grid */
         .table-overview {
@@ -220,9 +221,10 @@
             <span class="pot-label">Total Pot</span>
             <span class="pot-value" id="pot-display">0</span>
         </div>
-        <div class="time-controls">
+        <div class="header-controls">
             <button class="btn-time" id="btn-undo" onclick="undo()">↺</button>
             <button class="btn-time" id="btn-redo" onclick="redo()">↻</button>
+            <button class="btn-time btn-end" onclick="endGame()">End</button>
         </div>
     </div>
 
@@ -548,12 +550,7 @@
                 <div class="focus-name">${cp.name}</div>
                 <div class="focus-balance ${balClass}">${cp.balance.toLocaleString()} 🪙</div>
             </div>
-
             ${focusBody}
-            
-            <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
-                <button class="btn-danger" style="background:transparent; border: 1px dashed var(--danger); color: var(--danger)" onclick="endGame()">End Game & Settle</button>
-            </div>
         `;
     }
 
