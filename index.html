@@ -1,0 +1,357 @@
+No, the previous version automatically named everyone "Player 1", "Player 2", etc.
+Here is the updated version. It now dynamically generates name input fields based on how many players you select, allowing you to enter custom names before starting the game. (It still keeps the local auto-save feature intact so you don't lose your data).
+app.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3 Patti Chip Manager</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border: #334155;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+        }
+
+        .container { max-width: 600px; margin: 0 auto; }
+        h2, h3 { margin-top: 0; text-align: center; }
+
+        /* Setup Screen */
+        #setup-screen {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .input-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; color: var(--text-muted); font-size: 14px; }
+        
+        input[type="number"], input[type="text"] {
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        #names-container {
+            border-top: 1px solid var(--border);
+            padding-top: 15px;
+            margin-top: 5px;
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button.primary:active { opacity: 0.8; }
+
+        /* Game Screen */
+        #game-screen { display: none; }
+
+        .header-actions { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+        .btn-reset-game { background: var(--danger); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+        .pot-container {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 2px solid var(--warning);
+        }
+
+        .pot-amount { font-size: 36px; font-weight: bold; color: var(--warning); margin: 10px 0; }
+
+        .action-row { display: flex; gap: 10px; margin-bottom: 20px; }
+        .action-row button { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-boot { background: var(--accent); color: white; }
+
+        .player-list { display: grid; gap: 15px; }
+
+        .player-card {
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .player-card.folded { opacity: 0.5; border-style: dashed; }
+
+        .player-header { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: bold; }
+        .balance { color: var(--accent); }
+        .balance.negative { color: var(--danger); }
+
+        .player-controls { display: flex; gap: 8px; }
+        .bet-input {
+            width: 80px;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .btn-bet, .btn-fold, .btn-win { border: none; border-radius: 4px; padding: 8px 12px; font-weight: bold; cursor: pointer; color: white; }
+        .btn-bet { background: #3b82f6; flex: 1; }
+        .btn-fold { background: var(--border); }
+        .btn-win { background: var(--warning); color: #000; width: 100%; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen">
+        <h2>Table Setup</h2>
+        <div class="input-group">
+            <label>Number of Players</label>
+            <input type="number" id="player-count" min="2" max="15" value="4">
+        </div>
+        <div class="input-group">
+            <label>Starting Coins per Player</label>
+            <input type="number" id="start-coins" value="1000" step="100">
+        </div>
+        <div class="input-group">
+            <label>Boot (Ante) Amount</label>
+            <input type="number" id="boot-amount" value="10" step="5">
+        </div>
+
+        <label style="margin-top:10px; display:block;">Player Names</label>
+        <div id="names-container">
+            <!-- Dynamic name inputs generated here -->
+        </div>
+
+        <button class="primary" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen">
+        <div class="header-actions">
+            <button class="btn-reset-game" onclick="endGame()">End Game & Reset</button>
+        </div>
+
+        <div class="pot-container">
+            <div>TOTAL POT</div>
+            <div class="pot-amount" id="pot-display">0</div>
+        </div>
+
+        <div class="action-row">
+            <button class="btn-boot" onclick="collectBoot()">Collect Boot (Start Hand)</button>
+        </div>
+
+        <div class="player-list" id="player-grid">
+            <!-- Players injected here via JS -->
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // App State
+    let players = [];
+    let pot = 0;
+    let bootAmount = 10;
+
+    // DOM Elements
+    const setupScreen = document.getElementById('setup-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const playerGrid = document.getElementById('player-grid');
+    const potDisplay = document.getElementById('pot-display');
+    const playerCountInput = document.getElementById('player-count');
+    const namesContainer = document.getElementById('names-container');
+
+    // Generate Name Inputs based on player count
+    function generateNameInputs() {
+        const count = parseInt(playerCountInput.value);
+        namesContainer.innerHTML = '';
+        if (count < 2 || count > 15 || isNaN(count)) return;
+
+        for (let i = 1; i <= count; i++) {
+            namesContainer.innerHTML += `
+                <input type="text" id="name-input-${i}" placeholder="Player ${i}" value="Player ${i}">
+            `;
+        }
+    }
+
+    // Update names when number changes
+    playerCountInput.addEventListener('input', generateNameInputs);
+
+    // Load data on start
+    window.onload = function() {
+        generateNameInputs(); // Initial setup
+
+        const savedData = localStorage.getItem('3patti_data');
+        if (savedData) {
+            const data = JSON.parse(savedData);
+            players = data.players;
+            pot = data.pot;
+            bootAmount = data.bootAmount;
+            
+            setupScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            renderUI();
+        }
+    };
+
+    function saveData() {
+        const data = { players, pot, bootAmount };
+        localStorage.setItem('3patti_data', JSON.stringify(data));
+    }
+
+    function startGame() {
+        const count = parseInt(playerCountInput.value);
+        const startingCoins = parseInt(document.getElementById('start-coins').value);
+        bootAmount = parseInt(document.getElementById('boot-amount').value);
+
+        if (count < 2 || isNaN(count)) return alert("Need at least 2 players");
+
+        players = [];
+        for (let i = 1; i <= count; i++) {
+            const nameInput = document.getElementById(`name-input-${i}`);
+            // Use entered name, fallback to "Player X" if left empty
+            const playerName = nameInput && nameInput.value.trim() !== '' ? nameInput.value.trim() : `Player ${i}`;
+            
+            players.push({ 
+                id: i, 
+                name: playerName, 
+                balance: startingCoins, 
+                isFolded: false 
+            });
+        }
+
+        pot = 0;
+        saveData();
+        setupScreen.style.display = 'none';
+        gameScreen.style.display = 'block';
+        renderUI();
+    }
+
+    function endGame() {
+        if (confirm("Are you sure you want to end the game? All balances will be permanently deleted.")) {
+            localStorage.removeItem('3patti_data');
+            players = [];
+            pot = 0;
+            gameScreen.style.display = 'none';
+            setupScreen.style.display = 'block';
+            generateNameInputs();
+        }
+    }
+
+    function collectBoot() {
+        players.forEach(p => p.isFolded = false);
+        
+        let activePlayersCount = 0;
+        players.forEach(p => {
+            p.balance -= bootAmount;
+            activePlayersCount++;
+        });
+        
+        pot += (activePlayersCount * bootAmount);
+        saveData();
+        renderUI();
+    }
+
+    function placeBet(playerId) {
+        const player = players.find(p => p.id === playerId);
+        const input = document.getElementById(`bet-input-${playerId}`);
+        const amount = parseInt(input.value);
+
+        if (isNaN(amount) || amount <= 0) return alert("Invalid bet amount");
+
+        player.balance -= amount;
+        pot += amount;
+        saveData();
+        renderUI();
+    }
+
+    function foldPlayer(playerId) {
+        const player = players.find(p => p.id === playerId);
+        player.isFolded = true;
+        saveData();
+        renderUI();
+    }
+
+    function awardWinner(playerId) {
+        if (pot === 0) return alert("The pot is empty!");
+        
+        const player = players.find(p => p.id === playerId);
+        if (!confirm(`Award ${pot} coins to ${player.name}?`)) return;
+
+        player.balance += pot;
+        pot = 0;
+        
+        players.forEach(p => p.isFolded = false);
+        saveData();
+        renderUI();
+    }
+
+    function renderUI() {
+        potDisplay.innerText = pot;
+        playerGrid.innerHTML = '';
+
+        players.forEach(p => {
+            const isBankrupt = p.balance < 0 ? 'negative' : '';
+            const foldedClass = p.isFolded ? 'folded' : '';
+            
+            const cardHTML = `
+                <div class="player-card ${foldedClass}">
+                    <div class="player-header">
+                        <span>${p.name} ${p.isFolded ? '(Packed)' : ''}</span>
+                        <span class="balance ${isBankrupt}">${p.balance} 🪙</span>
+                    </div>
+                    
+                    ${!p.isFolded ? `
+                        <div class="player-controls">
+                            <input type="number" id="bet-input-${p.id}" class="bet-input" value="${bootAmount}" step="${bootAmount}">
+                            <button class="btn-bet" onclick="placeBet(${p.id})">Bet</button>
+                            <button class="btn-fold" onclick="foldPlayer(${p.id})">Pack</button>
+                        </div>
+                    ` : ''}
+                    
+                    ${pot > 0 ? `
+                        <button class="btn-win" onclick="awardWinner(${p.id})">🏆 Winner (Take Pot)</button>
+                    ` : ''}
+                </div>
+            `;
+            playerGrid.innerHTML += cardHTML;
+        });
+    }
+</script>
+
+</body>
+</html>
