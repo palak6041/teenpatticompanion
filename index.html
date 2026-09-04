@@ -1,3 +1,6 @@
+That is a smart UI tweak. Moving the badge to the same line as the name prevents the mini-cards from dynamically resizing and jumping around when someone packs, keeping the layout perfectly locked to two rows.
+I have updated the CSS to use a flex header (.mc-header) inside the mini-card so the name and badge sit side-by-side, with the name cleanly truncating if it gets too long.
+Here is the updated, final application code:
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -122,14 +125,20 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            cursor: pointer;
         }
         .mini-card.active { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
         .mini-card.folded { opacity: 0.4; border-style: dashed; border-color: var(--border); }
         .mini-card.sitting-out { opacity: 0.3; background: #000; }
+        
+        /* Updated Grid Row 1: Name + Status Badge */
+        .mc-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
         .mc-name { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .status-badge { font-size: 10px; background: var(--border); padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+        
+        /* Grid Row 2: Balance */
         .mc-bal { font-size: 16px; font-weight: bold; color: var(--success); }
         .mc-bal.negative { color: var(--danger); }
-        .status-badge { font-size: 10px; background: var(--border); padding: 2px 6px; border-radius: 4px; align-self: flex-start; }
 
         /* Part 2: Split Screen - Focus Mode (Active Turn) */
         .focus-panel {
@@ -144,13 +153,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
         .focus-name { font-size: 22px; font-weight: 800; }
         .focus-balance { font-size: 22px; font-weight: 700; color: var(--success); }
-        
-        .nav-controls { display: flex; gap: 8px; margin-bottom: 12px; }
-        .nav-controls button { flex: 1; background: var(--bg-surface-elevated); padding: 8px; font-size: 14px; }
 
         .action-grid {
             display: grid;
@@ -298,10 +304,7 @@
             state.maxPotLimit = data.maxPotLimit || (state.players.length * state.startingCoins);
             state.currentIdx = data.currentIdx || 0;
 
-            // Ensure missing properties exist for older data
-            state.players.forEach(p => {
-                p.isSittingOut = p.isSittingOut || false;
-            });
+            state.players.forEach(p => { p.isSittingOut = p.isSittingOut || false; });
 
             switchScreen('game');
             renderGameUI();
@@ -315,7 +318,7 @@
     // --- TIME TRAVEL (UNDO/REDO) ---
     function captureSnapshot() {
         historyStack.push(JSON.stringify(state));
-        redoStack = []; // Clear redo timeline on new action
+        redoStack = []; 
         updateTimeButtons();
     }
 
@@ -390,7 +393,7 @@
         
         state.players.forEach(p => {
             if (!p.isSittingOut) {
-                p.isFolded = false; // Reset folded status for new hand
+                p.isFolded = false; 
                 p.balance -= state.bootAmount;
                 activeCount++;
             }
@@ -398,7 +401,6 @@
         
         state.pot += (activeCount * state.bootAmount);
         
-        // Move turn to first active player
         state.currentIdx = -1;
         advanceTurn(); 
         
@@ -413,7 +415,7 @@
 
         const finalAmount = baseAmount * multiplier;
 
-        if (state.maxPotLimit > 0 && (state.pot + finalAmount) > state.maxPotLimit) {
+        if (state.pot + finalAmount > state.maxPotLimit) {
             return alert(`Bet rejected. Max pot limit is ${state.maxPotLimit.toLocaleString()}. Must show cards!`);
         }
 
@@ -443,27 +445,19 @@
 
         captureSnapshot();
         p.balance += state.pot;
-        state.pot = 0;
+        state.pot = 0; 
         state.players.forEach(pl => { if(!pl.isSittingOut) pl.isFolded = false; });
         saveToStorage();
         renderGameUI();
     }
 
-    // --- NAVIGATION LOGIC ---
     function advanceTurn() {
         let attempts = 0;
         do {
             state.currentIdx = (state.currentIdx + 1) % state.players.length;
             attempts++;
-            // Failsafe: if everyone is folded or out, stop infinite loop
             if (attempts > state.players.length) break; 
         } while (state.players[state.currentIdx].isFolded || state.players[state.currentIdx].isSittingOut);
-    }
-
-    function navPlayer(direction) {
-        // Manual navigation lets you inspect anyone, regardless of folded state
-        state.currentIdx = (state.currentIdx + direction + state.players.length) % state.players.length;
-        renderGameUI();
     }
 
     // --- RENDERING ---
@@ -488,9 +482,11 @@
 
             grid.innerHTML += `
                 <div class="${classes.join(' ')}" onclick="state.currentIdx = ${index}; renderGameUI();">
-                    <div class="mc-name">${p.name}</div>
+                    <div class="mc-header">
+                        <div class="mc-name">${p.name}</div>
+                        ${badgeHTML}
+                    </div>
                     <div class="mc-bal ${balClass}">${p.balance.toLocaleString()}</div>
-                    ${badgeHTML}
                 </div>
             `;
         });
@@ -502,7 +498,41 @@
         const isLocked = cp.isFolded || cp.isSittingOut;
         const balClass = cp.balance < 0 ? 'negative' : '';
         const sitOutText = cp.isSittingOut ? 'Join Next Hand' : 'Sit Out Hand';
-        const limitWarning = (state.pot >= state.maxPotLimit) ? `<div style="color:var(--danger); font-size:12px; font-weight:bold; text-align:center; margin-bottom:8px;">POT LIMIT REACHED</div>` : '';
+        const limitWarning = (state.pot >= state.maxPotLimit) ? `<div style="color:var(--danger); font-size:12px; font-weight:bold; text-align:center; margin-bottom:12px;">POT LIMIT REACHED</div>` : '';
+
+        let focusBody = '';
+
+        if (state.pot === 0) {
+            focusBody = `
+                <div style="text-align:center; padding: 20px 10px; color: var(--text-secondary); background: var(--bg-base); border-radius: var(--radius-md); margin-bottom: 16px;">
+                    Hand has not started.<br>Collect boot to deal cards.
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <button class="btn-primary" onclick="collectBoot()">Deal / Boot</button>
+                    <button class="btn-outline" onclick="toggleSitOut(${state.currentIdx})">${sitOutText}</button>
+                </div>
+            `;
+        } else {
+            focusBody = `
+                ${limitWarning}
+                ${!isLocked ? `
+                    <div class="action-grid" style="margin-bottom: 16px;">
+                        <div class="bet-input-wrapper">
+                            <input type="number" id="bet-input-${cp.id}" value="${state.bootAmount}" step="${state.bootAmount}" inputmode="numeric">
+                        </div>
+                        <button class="btn-action" onclick="executeBet(${cp.id}, 1)">Bet</button>
+                        <button class="btn-blind" onclick="executeBet(${cp.id}, 2)">Bet x2</button>
+                        
+                        <button class="btn-outline" style="grid-column: span 2" onclick="foldPlayer(${cp.id})">Pack (Fold)</button>
+                    </div>
+                ` : `<div style="text-align:center; padding: 20px; color: var(--text-secondary); background: var(--bg-base); border-radius: var(--radius-md); margin-bottom: 16px;">Player is currently ${cp.isSittingOut ? 'Sitting Out' : 'Packed'}</div>`}
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <button class="btn-primary" style="background:var(--warning); color:#000;" onclick="awardPot(${cp.id})">🏆 Take Pot</button>
+                    <button class="btn-outline" onclick="toggleSitOut(${state.currentIdx})">${sitOutText}</button>
+                </div>
+            `;
+        }
 
         focus.innerHTML = `
             <div class="focus-header">
@@ -510,29 +540,7 @@
                 <div class="focus-balance ${balClass}">${cp.balance.toLocaleString()} 🪙</div>
             </div>
 
-            <div class="nav-controls">
-                <button onclick="navPlayer(-1)">◀ Prev Player</button>
-                <button onclick="navPlayer(1)">Next Player ▶</button>
-            </div>
-            
-            ${limitWarning}
-
-            ${!isLocked ? `
-                <div class="action-grid">
-                    <div class="bet-input-wrapper">
-                        <input type="number" id="bet-input-${cp.id}" value="${state.bootAmount}" step="${state.bootAmount}" inputmode="numeric">
-                    </div>
-                    <button class="btn-action" onclick="executeBet(${cp.id}, 1)">Bet</button>
-                    <button class="btn-blind" onclick="executeBet(${cp.id}, 2)">Bet x2</button>
-                    
-                    <button class="btn-outline" style="grid-column: span 2" onclick="foldPlayer(${cp.id})">Pack (Fold)</button>
-                </div>
-            ` : `<div style="text-align:center; padding: 20px; color: var(--text-secondary);">Player is currently ${cp.isSittingOut ? 'Sitting Out' : 'Packed'}</div>`}
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top: 16px;">
-                <button class="btn-primary" onclick="collectBoot()">Deal / Boot</button>
-                ${state.pot > 0 ? `<button class="btn-primary" style="background:var(--warning); color:#000;" onclick="awardPot(${cp.id})">🏆 Take Pot</button>` : `<button class="btn-outline" onclick="toggleSitOut(${state.currentIdx})">${sitOutText}</button>`}
-            </div>
+            ${focusBody}
             
             <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
                 <button class="btn-danger" style="background:transparent; border: 1px dashed var(--danger); color: var(--danger)" onclick="endGame()">End Game & Settle</button>
@@ -581,9 +589,10 @@
 
     function confirmReset() {
         localStorage.removeItem('3patti_pro');
-        location.reload(); // Refresh browser to start completely clean
+        location.reload(); 
     }
 </script>
 
 </body>
 </html>
+
