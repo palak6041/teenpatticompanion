@@ -34,8 +34,8 @@
             overscroll-behavior-y: none;
             display: flex;
             flex-direction: column;
-            height: 100vh; /* Fallback */
-            height: 100dvh; /* Fixes mobile browser address bar overlap */
+            height: 100vh;
+            height: 100dvh;
         }
 
         /* Reusable UI Components */
@@ -168,9 +168,33 @@
         .focus-balance { font-size: 20px; font-weight: 700; color: var(--success); }
 
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .bet-input-wrapper { grid-column: span 2; display: flex; gap: 8px; }
-        .bet-input-wrapper input { text-align: center; font-weight: bold; font-size: 18px !important; height: 44px; }
-        .bet-input-wrapper button { flex: 1; height: 44px; }
+        
+        /* New Stepper Controls */
+        .bet-stepper {
+            grid-column: span 2;
+            display: flex;
+            align-items: center;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            height: 44px;
+        }
+        .bet-stepper button {
+            flex: 0 0 50px;
+            height: 100%;
+            background: var(--bg-surface-elevated);
+            border-radius: 0;
+            font-size: 20px;
+        }
+        .bet-stepper button:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+        .bet-stepper button:last-child { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+        .bet-stepper .bet-label {
+            flex: 1;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
         .action-btn-large { height: 44px; }
 
         /* Modal Settings */
@@ -184,16 +208,14 @@
         .debtor { color: var(--danger); font-weight: bold; }
         .creditor { color: var(--success); font-weight: bold; }
 
-        /* --- LANDSCAPE SUPPORT (No scrolling needed) --- */
+        /* --- LANDSCAPE SUPPORT --- */
         @media (orientation: landscape) {
             .game-content { flex-direction: row; }
             .table-overview { flex: 1; border-right: 1px solid var(--border); border-top: none; }
             .focus-panel { flex: 1; border-top: none; box-shadow: none; }
-            
-            /* Tighten heights slightly for short screens */
             .pot-value { font-size: 22px; }
             .btn-time { width: 36px; height: 36px; font-size: 16px; }
-            .action-btn-large, .bet-input-wrapper input { height: 38px; }
+            .action-btn-large, .bet-stepper { height: 38px; }
         }
     </style>
 </head>
@@ -294,7 +316,7 @@
         players: [],
         pot: 0,
         bootAmount: 10,
-        currentBet: 10, // Tracks the ongoing increased bets
+        currentBet: 10, // Tracks the ongoing table stake
         startingCoins: 1000,
         maxPotLimit: 6000,
         currentIdx: 0,
@@ -495,21 +517,24 @@
         renderGameUI();
     }
 
-    function executeBet(playerId, multiplier = 1) {
-        const input = document.getElementById(`bet-input-${playerId}`);
-        const baseAmount = parseInt(input.value);
-        if (isNaN(baseAmount) || baseAmount <= 0) return alert("Invalid amount");
+    // Adjusts the table's baseline stake before betting
+    function adjustBet(direction) {
+        let newBet = state.currentBet + (direction * state.bootAmount);
+        if (newBet < state.bootAmount) newBet = state.bootAmount;
+        state.currentBet = newBet;
+        saveToStorage();
+        renderGameUI();
+    }
 
-        const finalAmount = baseAmount * multiplier;
+    function executeBet(playerId, multiplier = 1) {
+        // Uses the current state bet baseline
+        const finalAmount = state.currentBet * multiplier;
 
         if (state.pot + finalAmount > state.maxPotLimit) {
             return alert(`Bet rejected. Max pot limit is ${state.maxPotLimit.toLocaleString()}. Must show cards!`);
         }
 
         captureSnapshot();
-        
-        // This is where "Subsequent bets increase" logic happens:
-        state.currentBet = finalAmount; 
         
         const p = state.players.find(p => p.id === playerId);
         p.balance -= finalAmount;
@@ -655,9 +680,13 @@
                 ${limitWarning}
                 ${!isLocked ? `
                     <div class="action-grid" style="margin-bottom: 10px;">
-                        <div class="bet-input-wrapper">
-                            <input type="number" id="bet-input-${cp.id}" value="${state.currentBet}" step="${state.bootAmount}" inputmode="numeric">
+                        
+                        <div class="bet-stepper">
+                            <button onclick="adjustBet(-1)">-</button>
+                            <div class="bet-label">${state.currentBet}</div>
+                            <button onclick="adjustBet(1)">+</button>
                         </div>
+                        
                         <button class="btn-action action-btn-large" onclick="executeBet(${cp.id}, 1)">Bet</button>
                         <button class="btn-blind action-btn-large" onclick="executeBet(${cp.id}, 2)">Bet x2</button>
                         
@@ -672,7 +701,6 @@
             `;
         }
 
-        // Added the new Transfer Coins button here
         focus.innerHTML = `
             <div class="focus-header">
                 <div class="focus-name">${cp.name}</div>
