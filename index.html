@@ -3,11 +3,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>3 Patti Table Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
-        /* Modern UI/UX Variables */
         :root {
             --bg-base: #0f172a;
             --bg-surface: #1e293b;
@@ -27,7 +26,6 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            /* Upgraded Typography & Radial Background Texture */
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background-color: var(--bg-base);
             background-image: radial-gradient(circle at top center, #1e293b 0%, #0f172a 100%);
@@ -42,8 +40,21 @@
             height: 100dvh; 
         }
 
-        /* Reusable UI Components */
-        .container { padding: 12px; max-width: 600px; margin: 0 auto; width: 100%; }
+        /* Safe Area Padding Fix for iPhone Notch / Top Bar */
+        .safe-padding-top {
+            padding-top: max(12px, env(safe-area-inset-top));
+        }
+
+        .container { 
+            padding: 12px; 
+            padding-top: max(12px, env(safe-area-inset-top));
+            max-width: 600px; 
+            margin: 0 auto; 
+            width: 100%; 
+            display: flex;
+            flex-direction: column;
+        }
+        
         h2, h3 { margin: 0 0 12px 0; text-align: center; letter-spacing: -0.02em; }
         label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
 
@@ -79,22 +90,19 @@
         button:active { transform: scale(0.97); filter: brightness(0.9); }
         button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
         
-        /* Upgraded Button Gradients & Shadows */
         .btn-primary { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
         .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
         .btn-action { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
         .btn-blind { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 4px 12px rgba(139, 92, 246, 0.2); border: 1px solid rgba(255,255,255,0.1); }
         .btn-outline { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); }
         
-        /* SVG Icon Utilities */
         .svg-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
         
         /* Layout Sections */
-        #setup-screen { padding: 12px; overflow-y: auto; height: 100%; }
-        #summary-screen { display: none; padding: 12px; overflow-y: auto; height: 100%; }
+        #setup-screen { overflow-y: auto; height: 100%; }
+        #summary-screen { display: none; overflow-y: auto; height: 100%; }
         #game-screen { display: none; flex-direction: column; height: 100%; overflow: hidden; }
         
-        /* --- COMPACT SETUP SCREEN UI --- */
         .setup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .setup-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); padding: 16px; border-radius: var(--radius-md); margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); }
         
@@ -107,7 +115,7 @@
         .seating-row input { flex: 1; padding: 8px 12px; height: 42px; font-size: 15px !important; }
         .btn-mini { width: 38px; min-width: 38px; height: 42px; padding: 0; background: var(--bg-surface-elevated); color: white; border-radius: 6px; }
 
-        /* Game Header: Glassmorphism Pot & Controls */
+        /* Game Header */
         .game-header {
             background: rgba(30, 41, 59, 0.85);
             backdrop-filter: blur(12px);
@@ -129,7 +137,7 @@
 
         .game-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 
-        /* Part 1: Table Overview Grid */
+        /* Table Overview Grid */
         .table-overview {
             flex: 1;
             overflow-y: auto;
@@ -140,7 +148,6 @@
             align-content: start;
         }
         
-        /* Smooth Mini Card Animations */
         .mini-card {
             background: rgba(30, 41, 59, 0.6);
             border: 2px solid transparent;
@@ -175,7 +182,7 @@
         .mc-bal { font-size: 17px; font-weight: 800; color: var(--success); }
         .mc-bal.negative { color: var(--danger); }
 
-        /* Part 2: Focus Mode */
+        /* Focus Panel */
         .focus-panel {
             background: var(--bg-surface);
             border-top: 1px solid rgba(255,255,255,0.05);
@@ -223,9 +230,31 @@
         }
         .action-btn-large { height: 48px; font-size: 16px; }
 
-        /* Modal Settings */
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
-        .modal-box { background: var(--bg-surface); padding: 24px; border-radius: var(--radius-lg); width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+        /* Custom Dialog UI */
+        .modal-overlay { 
+            display: none; position: fixed; inset: 0; 
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); 
+            z-index: 999; align-items: center; justify-content: center; padding: 20px; 
+            opacity: 0; transition: opacity 0.2s ease;
+        }
+        .modal-overlay.show { opacity: 1; }
+        .modal-box { 
+            background: var(--bg-surface); padding: 24px; border-radius: var(--radius-lg); 
+            width: 100%; max-width: 380px; border: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+        }
+        .modal-overlay.show .modal-box { transform: scale(1); }
+        .modal-icon { width: 56px; height: 56px; margin-bottom: 16px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+        .modal-icon.warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .modal-icon.question { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+        .modal-title { font-size: 20px; font-weight: 800; margin: 0 0 8px 0; }
+        .modal-text { font-size: 15px; color: var(--text-secondary); margin: 0 0 24px 0; line-height: 1.4; }
+        .modal-buttons { display: flex; gap: 12px; width: 100%; }
+
+        /* Generic Transfer Modal adjustments */
+        #transfer-modal .modal-box { align-items: stretch; text-align: left; }
 
         /* Settlement Screen */
         .settlement-card { background: rgba(30, 41, 59, 0.7); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
@@ -287,7 +316,7 @@
 </div>
 
 <div id="game-screen">
-    <div class="game-header">
+    <div class="game-header safe-padding-top">
         <div class="pot-display">
             <span class="pot-label">Total Pot</span>
             <span class="pot-value" id="pot-display" data-value="0">0</span>
@@ -318,7 +347,7 @@
 <div id="summary-screen" class="container">
     <h2 style="font-weight: 900; margin-bottom: 20px;">Settlement Summary</h2>
     <div class="settlement-card" id="settlement-list"></div>
-    <button class="btn-danger action-btn-large" onclick="confirmReset()">Close & Reset Table Data</button>
+    <button class="btn-danger action-btn-large" onclick="confirmReset()">Close & Reset Table</button>
 </div>
 
 <div id="transfer-modal" class="modal-overlay">
@@ -339,14 +368,78 @@
             <option value="gift">Gift (No repayment needed)</option>
         </select>
         
-        <div style="display:flex; gap:10px;">
+        <div class="modal-buttons">
             <button class="btn-outline action-btn-large" onclick="closeTransferModal()" style="flex:1;">Cancel</button>
             <button class="btn-primary action-btn-large" onclick="executeTransfer()" style="flex:1;">Confirm</button>
         </div>
     </div>
 </div>
 
+<div id="custom-dialog" class="modal-overlay">
+    <div class="modal-box">
+        <div id="dialog-icon" class="modal-icon"></div>
+        <div id="dialog-title" class="modal-title">Title</div>
+        <div id="dialog-text" class="modal-text">Message</div>
+        <div class="modal-buttons">
+            <button id="dialog-cancel" class="btn-outline action-btn-large" style="flex:1;">Cancel</button>
+            <button id="dialog-confirm" class="btn-primary action-btn-large" style="flex:1;">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // --- CUSTOM DIALOG ENGINE ---
+    const Dialog = {
+        element: document.getElementById('custom-dialog'),
+        iconEl: document.getElementById('dialog-icon'),
+        titleEl: document.getElementById('dialog-title'),
+        textEl: document.getElementById('dialog-text'),
+        btnConfirm: document.getElementById('dialog-confirm'),
+        btnCancel: document.getElementById('dialog-cancel'),
+
+        icons: {
+            warning: `<svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+            question: `<svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
+        },
+
+        show: function(type, title, text, confirmText, showCancel, onConfirm) {
+            this.iconEl.className = `modal-icon ${type}`;
+            this.iconEl.innerHTML = this.icons[type] || '';
+            this.titleEl.innerText = title;
+            this.textEl.innerText = text;
+            
+            this.btnConfirm.innerText = confirmText;
+            this.btnConfirm.onclick = () => {
+                this.hide();
+                if(onConfirm) onConfirm();
+            };
+
+            if(showCancel) {
+                this.btnCancel.style.display = 'flex';
+                this.btnCancel.onclick = () => this.hide();
+            } else {
+                this.btnCancel.style.display = 'none';
+            }
+
+            this.element.style.display = 'flex';
+            // slight delay to allow display:flex to apply before opacity transition
+            setTimeout(() => this.element.classList.add('show'), 10); 
+        },
+        
+        hide: function() {
+            this.element.classList.remove('show');
+            setTimeout(() => this.element.style.display = 'none', 200);
+        },
+
+        alert: function(title, text) {
+            this.show('warning', title, text, 'Got it', false, null);
+        },
+
+        confirm: function(title, text, confirmText, onConfirm) {
+            this.show('question', title, text, confirmText, true, onConfirm);
+        }
+    };
+
     // --- STATE MANAGEMENT ---
     let state = {
         players: [],
@@ -521,7 +614,6 @@
         renderGameUI();
     }
 
-    // --- ANIMATIONS ---
     function animatePot(targetValue) {
         const el = document.getElementById('pot-display');
         const startValue = parseInt(el.getAttribute('data-value')) || 0;
@@ -531,13 +623,12 @@
         }
         el.setAttribute('data-value', targetValue);
         
-        const duration = 400; // ms
+        const duration = 400; 
         const startTime = performance.now();
         
         function update(currentTime) {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            // Ease out quad
             const easeProgress = progress * (2 - progress);
             const current = Math.floor(startValue + (targetValue - startValue) * easeProgress);
             el.innerText = current.toLocaleString();
@@ -589,7 +680,7 @@
         const finalAmount = state.currentBet * multiplier;
 
         if (state.pot + finalAmount > state.maxPotLimit) {
-            return alert(`Bet rejected. Max pot limit is ${state.maxPotLimit.toLocaleString()}. Must show cards!`);
+            return Dialog.alert("Pot Limit Reached", `Bet rejected. The max pot limit is ${state.maxPotLimit.toLocaleString()}. Players must show cards!`);
         }
 
         captureSnapshot();
@@ -612,16 +703,17 @@
     }
 
     function awardPot(playerId) {
-        if (state.pot === 0) return alert("Pot is empty.");
+        if (state.pot === 0) return Dialog.alert("Error", "The central pot is currently empty.");
         const p = state.players.find(p => p.id === playerId);
-        if (!confirm(`Award ${state.pot.toLocaleString()} to ${p.name}?`)) return;
-
-        captureSnapshot();
-        p.balance += state.pot;
-        state.pot = 0; 
-        state.players.forEach(pl => { if(!pl.isSittingOut) pl.isFolded = false; });
-        saveToStorage();
-        renderGameUI();
+        
+        Dialog.confirm("Award Pot", `Are you sure you want to award ${state.pot.toLocaleString()} coins to ${p.name}?`, "Award Winner", () => {
+            captureSnapshot();
+            p.balance += state.pot;
+            state.pot = 0; 
+            state.players.forEach(pl => { if(!pl.isSittingOut) pl.isFolded = false; });
+            saveToStorage();
+            renderGameUI();
+        });
     }
 
     function advanceTurn() {
@@ -633,7 +725,6 @@
         } while (state.players[state.currentIdx].isFolded || state.players[state.currentIdx].isSittingOut);
     }
 
-    // --- LOAN / GIFT TRANSFER LOGIC ---
     function openTransferModal(playerId) {
         activeTransferPlayerId = playerId;
         const pFrom = state.players.find(x => x.id === playerId);
@@ -648,11 +739,16 @@
         });
         
         document.getElementById('transfer-amount').value = '';
-        document.getElementById('transfer-modal').style.display = 'flex';
+        
+        const modal = document.getElementById('transfer-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('show'), 10);
     }
 
     function closeTransferModal() {
-        document.getElementById('transfer-modal').style.display = 'none';
+        const modal = document.getElementById('transfer-modal');
+        modal.classList.remove('show');
+        setTimeout(() => modal.style.display = 'none', 200);
     }
 
     function executeTransfer() {
@@ -660,7 +756,7 @@
         const amt = parseInt(document.getElementById('transfer-amount').value);
         const type = document.getElementById('transfer-type').value;
 
-        if (isNaN(amt) || amt <= 0) return alert('Enter a valid transfer amount.');
+        if (isNaN(amt) || amt <= 0) return Dialog.alert("Invalid Amount", "Please enter a valid amount of coins to transfer.");
 
         captureSnapshot();
 
@@ -682,7 +778,6 @@
 
     // --- RENDERING ---
     function renderGameUI() {
-        // Trigger smooth counting animation for pot
         animatePot(state.pot);
         updateTimeButtons();
 
@@ -770,13 +865,15 @@
         `;
     }
 
-    // --- END GAME & SETTLEMENT ---
     function endGame() {
-        if (state.pot > 0) return alert(`There are ${state.pot} coins in the pot. Award them first!`);
-        if (confirm("End the game and calculate settlements?")) {
+        if (state.pot > 0) {
+            return Dialog.alert("Action Required", `There are ${state.pot.toLocaleString()} coins still in the pot. You must award the pot to the winner before ending the game.`);
+        }
+        
+        Dialog.confirm("End Game", "Are you sure you want to end the game and calculate final settlements?", "End Game", () => {
             calculateSettlements();
             switchScreen('summary');
-        }
+        });
     }
 
     function calculateSettlements() {
@@ -810,14 +907,16 @@
     }
 
     function confirmReset() {
-        state.gameActive = false;
-        state.pot = 0; 
-        historyStack = [];
-        redoStack = [];
-        
-        saveToStorage();
-        populateSetupScreen(); 
-        switchScreen('setup');
+        Dialog.confirm("Reset Table", "Are you sure you want to reset the table? Current balances will be cleared, but your settings will be saved.", "Reset Table", () => {
+            state.gameActive = false;
+            state.pot = 0; 
+            historyStack = [];
+            redoStack = [];
+            
+            saveToStorage();
+            populateSetupScreen(); 
+            switchScreen('setup');
+        });
     }
 </script>
 
