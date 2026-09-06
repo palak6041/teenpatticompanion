@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,7 +43,7 @@
         h2, h3 { margin: 0 0 12px 0; text-align: center; }
         label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 12px; }
 
-        input {
+        input, select {
             width: 100%;
             background: var(--bg-base);
             border: 1px solid var(--border);
@@ -53,7 +54,7 @@
             outline: none;
             touch-action: manipulation; 
         }
-        input:focus { border-color: var(--accent); }
+        input:focus, select:focus { border-color: var(--accent); }
         
         button {
             border: none;
@@ -113,7 +114,10 @@
         .btn-time { width: 40px; height: 40px; padding: 0; font-size: 20px; background: var(--bg-surface-elevated); color: white; }
         .btn-end { background: var(--danger); width: auto; padding: 0 12px; font-size: 14px; color: white; }
 
-        /* Part 1: Split Screen - Table Overview Grid */
+        /* Game Content wrapper for flex adjustments */
+        .game-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+        /* Part 1: Table Overview Grid */
         .table-overview {
             flex: 1;
             overflow-y: auto;
@@ -144,7 +148,7 @@
         .mc-bal { font-size: 16px; font-weight: bold; color: var(--success); }
         .mc-bal.negative { color: var(--danger); }
 
-        /* Part 2: Split Screen - Focus Mode (Active Turn) */
+        /* Part 2: Focus Mode (Active Turn) */
         .focus-panel {
             background: var(--bg-surface);
             border-top: 1px solid var(--border);
@@ -152,6 +156,7 @@
             padding-bottom: max(12px, env(safe-area-inset-bottom));
             flex-shrink: 0;
             box-shadow: 0 -4px 10px rgba(0,0,0,0.2);
+            overflow-y: auto;
         }
         .focus-header {
             display: flex;
@@ -162,16 +167,15 @@
         .focus-name { font-size: 20px; font-weight: 800; }
         .focus-balance { font-size: 20px; font-weight: 700; color: var(--success); }
 
-        .action-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .bet-input-wrapper { grid-column: span 2; display: flex; gap: 8px; }
         .bet-input-wrapper input { text-align: center; font-weight: bold; font-size: 18px !important; height: 44px; }
         .bet-input-wrapper button { flex: 1; height: 44px; }
-        
         .action-btn-large { height: 44px; }
+
+        /* Modal Settings */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+        .modal-box { background: var(--bg-surface); padding: 20px; border-radius: var(--radius-lg); width: 100%; max-width: 400px; border: 1px solid var(--border); }
 
         /* Settlement Screen */
         .settlement-card { background: var(--bg-surface); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px; }
@@ -179,6 +183,18 @@
         .settlement-item:last-child { border-bottom: none; }
         .debtor { color: var(--danger); font-weight: bold; }
         .creditor { color: var(--success); font-weight: bold; }
+
+        /* --- LANDSCAPE SUPPORT (No scrolling needed) --- */
+        @media (orientation: landscape) {
+            .game-content { flex-direction: row; }
+            .table-overview { flex: 1; border-right: 1px solid var(--border); border-top: none; }
+            .focus-panel { flex: 1; border-top: none; box-shadow: none; }
+            
+            /* Tighten heights slightly for short screens */
+            .pot-value { font-size: 22px; }
+            .btn-time { width: 36px; height: 36px; font-size: 16px; }
+            .action-btn-large, .bet-input-wrapper input { height: 38px; }
+        }
     </style>
 </head>
 <body>
@@ -232,11 +248,13 @@
         </div>
     </div>
 
-    <div class="table-overview" id="overview-grid">
-        </div>
+    <div class="game-content">
+        <div class="table-overview" id="overview-grid">
+            </div>
 
-    <div class="focus-panel" id="focus-panel">
-        </div>
+        <div class="focus-panel" id="focus-panel">
+            </div>
+    </div>
 </div>
 
 <div id="summary-screen" class="container">
@@ -245,12 +263,38 @@
     <button class="btn-danger" onclick="confirmReset()">Close & Reset Table Data</button>
 </div>
 
+<div id="transfer-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin-top:0;">Transfer Coins</h3>
+        <label>Transfer From:</label>
+        <input type="text" id="transfer-from" disabled style="margin-bottom:12px; opacity:0.7;">
+        
+        <label>Transfer To:</label>
+        <select id="transfer-to" style="margin-bottom:12px;"></select>
+        
+        <label>Amount:</label>
+        <input type="number" id="transfer-amount" inputmode="numeric" style="margin-bottom:12px;">
+        
+        <label>Transfer Type:</label>
+        <select id="transfer-type" style="margin-bottom:20px;">
+            <option value="loan">Loan (Must be repaid at end)</option>
+            <option value="gift">Gift (No repayment needed)</option>
+        </select>
+        
+        <div style="display:flex; gap:10px;">
+            <button class="btn-outline" onclick="closeTransferModal()" style="flex:1;">Cancel</button>
+            <button class="btn-primary" onclick="executeTransfer()" style="flex:1;">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- STATE MANAGEMENT ---
     let state = {
         players: [],
         pot: 0,
         bootAmount: 10,
+        currentBet: 10, // Tracks the ongoing increased bets
         startingCoins: 1000,
         maxPotLimit: 6000,
         currentIdx: 0,
@@ -260,6 +304,7 @@
     let setupPlayerCount = 6;
     let historyStack = [];
     let redoStack = [];
+    let activeTransferPlayerId = null;
 
     // --- DOM ELEMENTS ---
     const screens = {
@@ -332,13 +377,13 @@
             state.players = data.players || [];
             state.pot = data.pot || 0;
             state.bootAmount = data.bootAmount || 10;
+            state.currentBet = data.currentBet || state.bootAmount;
             state.startingCoins = data.startingCoins || 1000;
             state.maxPotLimit = data.maxPotLimit || (state.players.length * state.startingCoins);
             state.currentIdx = data.currentIdx || 0;
             state.gameActive = data.gameActive || false;
 
             state.players.forEach(p => { p.isSittingOut = p.isSittingOut || false; });
-
             populateSetupScreen();
 
             if (state.gameActive) {
@@ -392,6 +437,7 @@
         state.startingCoins = parseInt(document.getElementById('start-coins').value);
         state.bootAmount = parseInt(document.getElementById('boot-amount').value);
         state.maxPotLimit = parseInt(document.getElementById('max-pot').value) || Infinity;
+        state.currentBet = state.bootAmount;
         
         state.players = [];
         for(let i=0; i<setupPlayerCount; i++) {
@@ -440,6 +486,7 @@
         });
         
         state.pot += (activeCount * state.bootAmount);
+        state.currentBet = state.bootAmount; // Reset dynamic bet baseline for new hand
         
         state.currentIdx = -1;
         advanceTurn(); 
@@ -460,6 +507,10 @@
         }
 
         captureSnapshot();
+        
+        // This is where "Subsequent bets increase" logic happens:
+        state.currentBet = finalAmount; 
+        
         const p = state.players.find(p => p.id === playerId);
         p.balance -= finalAmount;
         state.pot += finalAmount;
@@ -500,6 +551,55 @@
         } while (state.players[state.currentIdx].isFolded || state.players[state.currentIdx].isSittingOut);
     }
 
+    // --- LOAN / GIFT TRANSFER LOGIC ---
+    function openTransferModal(playerId) {
+        activeTransferPlayerId = playerId;
+        const pFrom = state.players.find(x => x.id === playerId);
+        document.getElementById('transfer-from').value = pFrom.name;
+        
+        const toSelect = document.getElementById('transfer-to');
+        toSelect.innerHTML = '';
+        state.players.forEach(target => {
+            if(target.id !== playerId) {
+                toSelect.innerHTML += `<option value="${target.id}">${target.name}</option>`;
+            }
+        });
+        
+        document.getElementById('transfer-amount').value = '';
+        document.getElementById('transfer-modal').style.display = 'flex';
+    }
+
+    function closeTransferModal() {
+        document.getElementById('transfer-modal').style.display = 'none';
+    }
+
+    function executeTransfer() {
+        const toId = parseInt(document.getElementById('transfer-to').value);
+        const amt = parseInt(document.getElementById('transfer-amount').value);
+        const type = document.getElementById('transfer-type').value;
+
+        if (isNaN(amt) || amt <= 0) return alert('Enter a valid transfer amount.');
+
+        captureSnapshot();
+
+        const pFrom = state.players.find(x => x.id === activeTransferPlayerId);
+        const pTo = state.players.find(x => x.id === toId);
+
+        // Core balance transfer (affects chips on table)
+        pFrom.balance -= amt;
+        pTo.balance += amt;
+
+        // Mathematical offset trick: Adjusts the baseline to force the receiver to pay the giver at the end
+        if (type === 'loan') {
+            pFrom.startingBalance -= (amt * 2); 
+            pTo.startingBalance += (amt * 2);
+        }
+
+        saveToStorage();
+        closeTransferModal();
+        renderGameUI();
+    }
+
     // --- RENDERING ---
     function renderGameUI() {
         document.getElementById('pot-display').innerText = state.pot.toLocaleString();
@@ -508,7 +608,6 @@
         const grid = document.getElementById('overview-grid');
         const focus = document.getElementById('focus-panel');
         
-        // Render Top Grid
         grid.innerHTML = '';
         state.players.forEach((p, index) => {
             let status = '';
@@ -531,7 +630,6 @@
             `;
         });
 
-        // Render Focus Panel
         const cp = state.players[state.currentIdx];
         if (!cp) return;
 
@@ -558,7 +656,7 @@
                 ${!isLocked ? `
                     <div class="action-grid" style="margin-bottom: 10px;">
                         <div class="bet-input-wrapper">
-                            <input type="number" id="bet-input-${cp.id}" value="${state.bootAmount}" step="${state.bootAmount}" inputmode="numeric">
+                            <input type="number" id="bet-input-${cp.id}" value="${state.currentBet}" step="${state.bootAmount}" inputmode="numeric">
                         </div>
                         <button class="btn-action action-btn-large" onclick="executeBet(${cp.id}, 1)">Bet</button>
                         <button class="btn-blind action-btn-large" onclick="executeBet(${cp.id}, 2)">Bet x2</button>
@@ -574,12 +672,16 @@
             `;
         }
 
+        // Added the new Transfer Coins button here
         focus.innerHTML = `
             <div class="focus-header">
                 <div class="focus-name">${cp.name}</div>
                 <div class="focus-balance ${balClass}">${cp.balance.toLocaleString()} 🪙</div>
             </div>
             ${focusBody}
+            <div style="margin-top: 8px;">
+                <button class="btn-outline action-btn-large" style="width:100%; border: 1px dashed var(--border);" onclick="openTransferModal(${cp.id})">💸 Transfer Coins</button>
+            </div>
         `;
     }
 
@@ -622,7 +724,6 @@
         document.getElementById('settlement-list').innerHTML = html || '<div style="text-align:center;">Everyone broke even!</div>';
     }
 
-    // Retain configuration, but mark game as inactive and transition to setup
     function confirmReset() {
         state.gameActive = false;
         state.pot = 0; 
