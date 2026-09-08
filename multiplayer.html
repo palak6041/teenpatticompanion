@@ -1,0 +1,605 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>3 Patti Table Pro - Multiplayer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <!-- QRCode Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        :root {
+            --bg-base: #0f172a; --bg-surface: #1e293b; --bg-surface-elevated: #334155;
+            --text-primary: #f8fafc; --text-secondary: #94a3b8;
+            --accent: #3b82f6; --blind: #8b5cf6; --success: #10b981;
+            --danger: #ef4444; --warning: #f59e0b; --border: #334155;
+            --radius-md: 8px; --radius-lg: 12px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            background-image: radial-gradient(circle at top center, #1e293b 0%, #0f172a 100%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            margin: 0; padding: 0;
+            overscroll-behavior-y: none;
+            display: flex; flex-direction: column;
+            height: 100vh; height: 100dvh; 
+        }
+
+        .safe-padding-top { padding-top: max(12px, env(safe-area-inset-top)); }
+        
+        .container { 
+            padding: 12px; padding-top: max(12px, env(safe-area-inset-top));
+            max-width: 600px; margin: 0 auto; width: 100%; 
+            display: flex; flex-direction: column;
+        }
+        
+        h2, h3 { margin: 0 0 12px 0; text-align: center; letter-spacing: -0.02em; }
+        label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+
+        input, select {
+            width: 100%; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border);
+            color: var(--text-primary); padding: 10px 12px; border-radius: var(--radius-md);
+            font-size: 16px !important; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        
+        button {
+            border: none; border-radius: var(--radius-md); font-size: 15px; font-weight: 700;
+            padding: 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            gap: 8px; transition: transform 0.1s, filter 0.2s, box-shadow 0.2s;
+        }
+        button:active { transform: scale(0.97); filter: brightness(0.9); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
+        
+        .btn-primary { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-action { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
+        .btn-blind { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 4px 12px rgba(139, 92, 246, 0.2); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-outline { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); }
+        
+        .svg-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        
+        /* Screens */
+        .screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        .screen.active { display: flex; }
+
+        /* Setup / UI Cards */
+        .setup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .setup-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); padding: 16px; border-radius: var(--radius-md); margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        
+        .compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .compact-grid .full-width { grid-column: span 2; }
+        
+        #qr-container { text-align: center; background: white; padding: 12px; border-radius: 8px; width: fit-content; margin: 10px auto; }
+        
+        /* Game UI */
+        .game-header {
+            background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 10;
+        }
+        .pot-display { display: flex; flex-direction: column; }
+        .pot-label { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; }
+        .pot-value { font-size: 28px; font-weight: 900; color: var(--warning); line-height: 1.1; text-shadow: 0 2px 10px rgba(245, 158, 11, 0.3); }
+        .btn-end { background: linear-gradient(135deg, var(--danger), #b91c1c); width: auto; padding: 0 14px; font-size: 14px; color: white; height: 42px; }
+
+        .game-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+        .table-overview { flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
+        
+        .mini-card {
+            background: rgba(30, 41, 59, 0.6); border: 2px solid transparent; padding: 12px; border-radius: var(--radius-md);
+            display: flex; flex-direction: column; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .mini-card.active { border-color: var(--accent); background: rgba(59, 130, 246, 0.15); animation: pulseGlow 2s infinite; }
+        @keyframes pulseGlow { 0% { box-shadow: 0 0 8px rgba(59, 130, 246, 0.2); } 50% { box-shadow: 0 0 16px rgba(59, 130, 246, 0.5); } 100% { box-shadow: 0 0 8px rgba(59, 130, 246, 0.2); } }
+        .mini-card.folded { opacity: 0.4; border-style: dashed; border-color: var(--border); filter: grayscale(50%); }
+        
+        .mc-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+        .mc-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
+        .status-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; background: var(--border); padding: 2px 6px; border-radius: 4px; }
+        .mc-bal { font-size: 17px; font-weight: 800; color: var(--success); }
+        .mc-bal.hidden { color: var(--text-secondary); font-size: 13px; font-weight: 600; }
+
+        /* Focus Panel */
+        .focus-panel {
+            background: var(--bg-surface); border-top: 1px solid rgba(255,255,255,0.05); padding: 16px 20px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom)); flex-shrink: 0; box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+        }
+        .focus-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        .bet-stepper {
+            grid-column: span 2; display: flex; align-items: center; background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border); border-radius: var(--radius-md); height: 48px; overflow: hidden;
+        }
+        .bet-stepper button { flex: 0 0 56px; height: 100%; background: var(--bg-surface-elevated); border-radius: 0; font-size: 22px; color: white; }
+        .bet-stepper .bet-label { flex: 1; text-align: center; font-size: 18px; font-weight: 800; }
+        .action-btn-large { height: 48px; font-size: 16px; width: 100%; }
+
+        /* Custom Dialog UI */
+        .modal-overlay { 
+            display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 999; 
+            align-items: center; justify-content: center; padding: 20px; opacity: 0; transition: opacity 0.2s ease;
+        }
+        .modal-overlay.show { opacity: 1; }
+        .modal-box { 
+            background: var(--bg-surface); padding: 24px; border-radius: var(--radius-lg); width: 100%; max-width: 380px; 
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+        }
+        .modal-overlay.show .modal-box { transform: scale(1); }
+        .modal-icon { width: 56px; height: 56px; margin-bottom: 16px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+        .modal-icon.warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .modal-icon.question { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+        .modal-title { font-size: 20px; font-weight: 800; margin: 0 0 8px 0; }
+        .modal-text { font-size: 15px; color: var(--text-secondary); margin: 0 0 24px 0; line-height: 1.4; }
+        .modal-buttons { display: flex; gap: 12px; width: 100%; }
+
+        /* Landscape Support */
+        @media (orientation: landscape) {
+            .game-content { flex-direction: row; }
+            .table-overview { flex: 1; border-right: 1px solid var(--border); border-top: none; }
+            .focus-panel { flex: 1; border-top: none; box-shadow: -8px 0 24px rgba(0,0,0,0.3); }
+            .action-btn-large, .bet-stepper { height: 42px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 1. LANDING SCREEN -->
+<div id="landing-screen" class="container screen active">
+    <h2 style="font-size: 28px; margin-top: 40px; color: var(--warning); text-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);">3 Patti Table Pro</h2>
+    
+    <div class="setup-card" style="margin-top: 20px;">
+        <h3 style="font-weight: 900;">Host a Table</h3>
+        <p style="text-align: center; color: var(--text-secondary); font-size: 14px;">Create a new game and invite friends via QR code.</p>
+        <button class="btn-primary action-btn-large" onclick="createRoom()">Host Game</button>
+    </div>
+
+    <div class="setup-card" style="margin-top: 10px;">
+        <h3 style="font-weight: 900;">Join a Table</h3>
+        <input type="text" id="join-room-id" placeholder="Room Code (e.g. 12345)" style="margin-bottom: 12px; text-transform: uppercase; text-align: center; font-weight: bold; font-size: 20px !important;">
+        <input type="text" id="join-player-name" placeholder="Your Name" style="margin-bottom: 16px; text-align: center;">
+        <button class="btn-action action-btn-large" onclick="joinRoom()">Join Game</button>
+    </div>
+</div>
+
+<!-- 2. HOST LOBBY & SETUP -->
+<div id="setup-screen" class="container screen">
+    <div class="setup-header">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 900;">Lobby: <span id="display-room-code" style="color: var(--warning);"></span></h2>
+        <button class="btn-primary" style="height: 40px; padding: 0 16px;" onclick="startGame()">Start Game ▶</button>
+    </div>
+
+    <div class="setup-card">
+        <div id="qr-container"></div>
+        <p style="text-align:center; font-size:13px; color:var(--text-secondary); margin-top: 10px; font-weight: 600;">Players can scan this QR code to join automatically.</p>
+    </div>
+    
+    <div class="setup-card">
+        <div class="compact-grid">
+            <div><label>Start Coins</label><input type="number" id="start-coins" value="1000" onchange="updateSettings()"></div>
+            <div><label>Boot (Ante)</label><input type="number" id="boot-amount" value="10" onchange="updateSettings()"></div>
+            <div class="full-width"><label>Max Pot Limit (0 = No Limit)</label><input type="number" id="max-pot" value="6000" onchange="updateSettings()"></div>
+        </div>
+    </div>
+
+    <div class="setup-card">
+        <h3 style="text-align:left; font-weight: 800; font-size: 16px;">Players in Lobby</h3>
+        <ul id="joined-players-list" style="padding-left: 20px; color: var(--success); font-weight: 600;">
+            <!-- Populated via Firebase -->
+        </ul>
+    </div>
+</div>
+
+<!-- 3. GAME SCREEN -->
+<div id="game-screen" class="screen">
+    <div class="game-header safe-padding-top">
+        <div class="pot-display">
+            <span class="pot-label">Total Pot</span>
+            <span class="pot-value" id="pot-display" data-value="0">0</span>
+        </div>
+        <div class="header-controls">
+            <!-- End Game visible only to Host -->
+            <button id="host-end-btn" class="btn-end" onclick="endGame()" style="display:none;">End Game</button>
+        </div>
+    </div>
+
+    <div class="game-content">
+        <div class="table-overview" id="overview-grid">
+            <!-- Player cards inject here -->
+        </div>
+
+        <div class="focus-panel" id="focus-panel">
+            <!-- Contextual action buttons inject here -->
+        </div>
+    </div>
+</div>
+
+<!-- CUSTOM DIALOG -->
+<div id="custom-dialog" class="modal-overlay">
+    <div class="modal-box">
+        <div id="dialog-icon" class="modal-icon"></div>
+        <div id="dialog-title" class="modal-title">Title</div>
+        <div id="dialog-text" class="modal-text">Message</div>
+        <div class="modal-buttons">
+            <button id="dialog-cancel" class="btn-outline action-btn-large" style="flex:1;">Cancel</button>
+            <button id="dialog-confirm" class="btn-primary action-btn-large" style="flex:1;">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // ⚠️ REPLACE THIS WITH YOUR FIREBASE CONFIG
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_ID",
+        appId: "YOUR_APP_ID"
+    };
+    
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    // --- CUSTOM DIALOG ENGINE ---
+    const Dialog = {
+        element: document.getElementById('custom-dialog'),
+        iconEl: document.getElementById('dialog-icon'),
+        titleEl: document.getElementById('dialog-title'),
+        textEl: document.getElementById('dialog-text'),
+        btnConfirm: document.getElementById('dialog-confirm'),
+        btnCancel: document.getElementById('dialog-cancel'),
+
+        icons: {
+            warning: `<svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+            question: `<svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
+        },
+
+        show: function(type, title, text, confirmText, showCancel, onConfirm) {
+            this.iconEl.className = `modal-icon ${type}`;
+            this.iconEl.innerHTML = this.icons[type] || '';
+            this.titleEl.innerText = title;
+            this.textEl.innerText = text;
+            this.btnConfirm.innerText = confirmText;
+            
+            this.btnConfirm.onclick = () => { this.hide(); if(onConfirm) onConfirm(); };
+            
+            if(showCancel) {
+                this.btnCancel.style.display = 'flex';
+                this.btnCancel.onclick = () => this.hide();
+            } else {
+                this.btnCancel.style.display = 'none';
+            }
+
+            this.element.style.display = 'flex';
+            setTimeout(() => this.element.classList.add('show'), 10); 
+        },
+        hide: function() {
+            this.element.classList.remove('show');
+            setTimeout(() => this.element.style.display = 'none', 200);
+        },
+        alert: function(title, text) { this.show('warning', title, text, 'Got it', false, null); },
+        confirm: function(title, text, confirmText, onConfirm) { this.show('question', title, text, confirmText, true, onConfirm); }
+    };
+
+    // --- APP STATE ---
+    let myRoomId = null;
+    let myPlayerId = null;
+    let isHost = false;
+    
+    let state = {
+        players: [], pot: 0, bootAmount: 10, currentBet: 10,
+        startingCoins: 1000, maxPotLimit: 6000, currentIdx: 0, gameActive: false
+    };
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    // Auto-fill Room ID if scanned via QR
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomFromUrl = urlParams.get('room');
+        if (roomFromUrl) document.getElementById('join-room-id').value = roomFromUrl;
+    };
+
+    // --- MULTIPLAYER LOGIC ---
+    function createRoom() {
+        isHost = true;
+        myRoomId = Math.floor(10000 + Math.random() * 90000).toString(); 
+        myPlayerId = 1; 
+        
+        state.players = [{
+            id: 1, name: "Host (Me)", balance: 1000, startingBalance: 1000, isFolded: false, isSittingOut: false
+        }];
+
+        const currentUrl = window.location.href.split('?')[0];
+        const joinUrl = `${currentUrl}?room=${myRoomId}`;
+        
+        document.getElementById('qr-container').innerHTML = '';
+        new QRCode(document.getElementById("qr-container"), { text: joinUrl, width: 200, height: 200 });
+        
+        document.getElementById('display-room-code').innerText = myRoomId;
+        document.getElementById('host-end-btn').style.display = 'block';
+
+        syncToFirebase();
+        listenToFirebase();
+        showScreen('setup-screen');
+    }
+
+    function joinRoom() {
+        isHost = false;
+        myRoomId = document.getElementById('join-room-id').value.toUpperCase();
+        const myName = document.getElementById('join-player-name').value.trim() || "Player";
+
+        if (!myRoomId) return Dialog.alert("Input Required", "Please enter a room code.");
+
+        db.ref('rooms/' + myRoomId).once('value', snapshot => {
+            if (!snapshot.exists()) return Dialog.alert("Error", "Room not found. Check the code.");
+            
+            state = snapshot.val();
+            if (state.gameActive) return Dialog.alert("Access Denied", "Game is already in progress.");
+
+            myPlayerId = state.players.length > 0 ? Math.max(...state.players.map(p => p.id)) + 1 : 1;
+            state.players.push({
+                id: myPlayerId, name: myName, balance: state.startingCoins, startingBalance: state.startingCoins,
+                isFolded: false, isSittingOut: false
+            });
+
+            syncToFirebase();
+            listenToFirebase();
+            
+            document.getElementById('host-end-btn').style.display = 'none';
+            showScreen('game-screen');
+        });
+    }
+
+    function updateSettings() {
+        if (!isHost) return;
+        state.startingCoins = parseInt(document.getElementById('start-coins').value);
+        state.bootAmount = parseInt(document.getElementById('boot-amount').value);
+        state.maxPotLimit = parseInt(document.getElementById('max-pot').value) || Infinity;
+        state.currentBet = state.bootAmount;
+        
+        state.players.forEach(p => { p.balance = state.startingCoins; p.startingBalance = state.startingCoins; });
+        syncToFirebase();
+    }
+
+    function startGame() {
+        if (!isHost) return;
+        state.gameActive = true;
+        syncToFirebase();
+    }
+
+    function syncToFirebase() {
+        if (myRoomId) db.ref('rooms/' + myRoomId).set(state);
+    }
+
+    function listenToFirebase() {
+        db.ref('rooms/' + myRoomId).on('value', snapshot => {
+            if (!snapshot.exists()) {
+                Dialog.alert("Game Over", "The host has closed the table.");
+                setTimeout(() => location.reload(), 2000);
+                return;
+            }
+            state = snapshot.val();
+            
+            if (isHost && !state.gameActive) {
+                const list = document.getElementById('joined-players-list');
+                list.innerHTML = state.players.map(p => `<li>${p.name}</li>`).join('');
+            }
+            if (state.gameActive) {
+                showScreen('game-screen');
+                renderGameUI();
+            }
+        });
+    }
+
+    // --- GAME ENGINE (Actions push to Firebase) ---
+    function collectBoot() {
+        if (!isHost) return; 
+        let activeCount = 0;
+        state.players.forEach(p => {
+            if (!p.isSittingOut) { p.isFolded = false; p.balance -= state.bootAmount; activeCount++; }
+        });
+        state.pot += (activeCount * state.bootAmount);
+        state.currentBet = state.bootAmount; 
+        state.currentIdx = -1;
+        advanceTurn(); 
+        syncToFirebase();
+    }
+
+    function adjustBet(direction) {
+        let newBet = state.currentBet + (direction * state.bootAmount);
+        if (newBet < state.bootAmount) newBet = state.bootAmount;
+        state.currentBet = newBet;
+        syncToFirebase();
+    }
+
+    function executeBet(multiplier = 1) {
+        const finalAmount = state.currentBet * multiplier;
+        if (state.pot + finalAmount > state.maxPotLimit) {
+            return Dialog.alert("Pot Limit Reached", `Max pot limit is ${state.maxPotLimit.toLocaleString()}. Players must show cards!`);
+        }
+        const p = state.players.find(p => p.id === myPlayerId);
+        p.balance -= finalAmount;
+        state.pot += finalAmount;
+        advanceTurn();
+        syncToFirebase();
+    }
+
+    function foldPlayer() {
+        const p = state.players.find(p => p.id === myPlayerId);
+        p.isFolded = true;
+        advanceTurn();
+        syncToFirebase();
+    }
+
+    function promptAwardPot() {
+        if (!isHost) return;
+        if (state.pot === 0) return Dialog.alert("Empty Pot", "There is no money in the central pot to award.");
+        
+        let selectHtml = `<select id="winner-select" style="margin: 16px 0; background:var(--bg-base); border-color:var(--border);">`;
+        state.players.forEach(p => { if(!p.isFolded && !p.isSittingOut) selectHtml += `<option value="${p.id}">${p.name}</option>`; });
+        selectHtml += `</select>`;
+
+        Dialog.confirm("Award Pot", `Who won the pot of ${state.pot.toLocaleString()} coins?`, "Give Pot", () => {
+            const winnerId = parseInt(document.getElementById('winner-select').value);
+            const p = state.players.find(p => p.id === winnerId);
+            p.balance += state.pot;
+            state.pot = 0;
+            state.players.forEach(pl => { if(!pl.isSittingOut) pl.isFolded = false; });
+            syncToFirebase();
+        });
+        
+        // Inject select dropdown into dialog temporarily
+        document.getElementById('dialog-text').innerHTML += selectHtml;
+    }
+
+    function advanceTurn() {
+        let attempts = 0;
+        do {
+            state.currentIdx = (state.currentIdx + 1) % state.players.length;
+            attempts++;
+            if (attempts > state.players.length) break; 
+        } while (state.players[state.currentIdx].isFolded || state.players[state.currentIdx].isSittingOut);
+    }
+
+    // --- ANIMATIONS & RENDERING ---
+    function animatePot(targetValue) {
+        const el = document.getElementById('pot-display');
+        const startValue = parseInt(el.getAttribute('data-value')) || 0;
+        if (startValue === targetValue) { el.innerText = targetValue.toLocaleString(); return; }
+        el.setAttribute('data-value', targetValue);
+        
+        const duration = 400; const startTime = performance.now();
+        function update(currentTime) {
+            const progress = Math.min((currentTime - startTime) / duration, 1);
+            el.innerText = Math.floor(startValue + (targetValue - startValue) * (progress * (2 - progress))).toLocaleString();
+            if (progress < 1) requestAnimationFrame(update); else el.innerText = targetValue.toLocaleString();
+        }
+        requestAnimationFrame(update);
+    }
+
+    function renderGameUI() {
+        animatePot(state.pot);
+        const grid = document.getElementById('overview-grid');
+        grid.innerHTML = '';
+        
+        state.players.forEach((p, index) => {
+            let status = '';
+            let classes = ['mini-card'];
+            if (index === state.currentIdx) classes.push('active');
+            if (p.isSittingOut) { classes.push('sitting-out'); status = 'Sitting Out'; }
+            else if (p.isFolded) { classes.push('folded'); status = 'Packed'; }
+
+            // PRIVACY LOGIC: Host sees everyone's balance. Clients only see their own balance.
+            const showBalance = isHost || p.id === myPlayerId;
+            const balHTML = showBalance 
+                ? `<div class="mc-bal ${p.balance < 0 ? 'negative' : ''}">${p.balance.toLocaleString()}</div>`
+                : `<div class="mc-bal hidden">Hidden</div>`;
+            
+            if (showBalance && p.balance < 0) classes.push('negative-bg');
+            const badgeHTML = status ? `<div class="status-badge">${status}</div>` : '';
+
+            grid.innerHTML += `
+                <div class="${classes.join(' ')}">
+                    <div class="mc-header">
+                        <span style="font-weight:700;">${p.name} ${p.id === myPlayerId ? '(You)' : ''}</span>
+                        ${badgeHTML}
+                    </div>
+                    ${balHTML}
+                </div>
+            `;
+        });
+
+        // Current Player Focus Panel
+        const focus = document.getElementById('focus-panel');
+        const cp = state.players[state.currentIdx];
+        const isMyTurn = (cp && cp.id === myPlayerId);
+
+        let focusBody = '';
+
+        if (state.pot === 0) {
+            if (isHost) {
+                focusBody = `
+                    <div style="text-align:center; padding: 20px; font-weight: 600; color: var(--text-secondary);">Table is ready.</div>
+                    <button class="btn-primary action-btn-large" onclick="collectBoot()">Deal / Boot</button>
+                `;
+            } else {
+                focusBody = `<div style="text-align:center; padding: 20px; font-weight: 600; color: var(--text-secondary);">Waiting for Host to deal...</div>`;
+            }
+        } else if (isMyTurn) {
+            focusBody = `
+                <div class="focus-header">
+                    <span style="font-size: 22px; font-weight: 900;">Your Turn</span>
+                    <span style="font-size: 22px; font-weight: 800; color: var(--success);">${cp.balance.toLocaleString()} 🪙</span>
+                </div>
+                <div class="action-grid">
+                    <div class="bet-stepper">
+                        <button onclick="adjustBet(-1)">-</button>
+                        <div class="bet-label">${state.currentBet}</div>
+                        <button onclick="adjustBet(1)">+</button>
+                    </div>
+                    <button class="btn-action action-btn-large" onclick="executeBet(1)">Bet 1x</button>
+                    <button class="btn-blind action-btn-large" onclick="executeBet(2)">Bet 2x</button>
+                    <button class="btn-outline action-btn-large" style="grid-column: span 2" onclick="foldPlayer()">Pack (Fold)</button>
+                </div>
+            `;
+        } else {
+            focusBody = `
+                <div style="text-align:center; padding: 24px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md);">
+                    <div style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">Waiting for ${cp.name}...</div>
+                    <div style="color: var(--text-secondary); font-weight: 600;">They are deciding their move.</div>
+                </div>
+            `;
+        }
+
+        // Host always gets table management controls at the bottom
+        let hostControls = '';
+        if (isHost && state.pot > 0) {
+            hostControls = `
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <button class="btn-primary action-btn-large" style="background:linear-gradient(135deg, var(--warning), #d97706); color:#000;" onclick="promptAwardPot()">🏆 Award Pot</button>
+                </div>
+            `;
+        }
+
+        focus.innerHTML = focusBody + hostControls;
+    }
+
+    function endGame() {
+        if (!isHost) return;
+        Dialog.confirm("End Game", "Are you sure you want to end this multiplayer session? All players will be disconnected.", "End Game", () => {
+            db.ref('rooms/' + myRoomId).remove();
+            location.reload();
+        });
+    }
+</script>
+</body>
+</html>
+
